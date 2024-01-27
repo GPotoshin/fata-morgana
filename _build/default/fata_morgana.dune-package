@@ -1,0 +1,4 @@
+(lang dune 3.12)
+(name fata_morgana)
+(sections (lib .))
+(files (lib (META dune-package opam)))

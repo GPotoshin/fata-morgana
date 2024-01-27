@@ -1,0 +1,10 @@
+(library
+ (name grooph)
+ (modules grooph)
+ (libraries ctypes-foreign))
+
+(executable
+  (name img_test)
+  (modules img_test)
+  (link_flags -cclib -lgrooph)
+  (libraries grooph))
