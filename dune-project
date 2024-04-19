@@ -15,13 +15,10 @@
 
 (documentation https://url/to/documentation)
 (using ctypes 0.3)
+
 (package
  (name fata_morgana)
  (synopsis "alternative to manim")
  (description "Script your vidoes with fata morgana")
  (depends ocaml dune))
-
-(package
-  (name grooph)
-  (depends ocaml dune))
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

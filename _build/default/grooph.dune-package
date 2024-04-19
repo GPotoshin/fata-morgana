@@ -1,4 +1,4 @@
 (lang dune 3.12)
 (name grooph)
-(sections (lib .))
-(files (lib (META dune-package opam)))
+(sections (lib .) (doc ../../doc/grooph))
+(files (lib (META dune-package opam)) (doc (README.md)))

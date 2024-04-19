@@ -5,9 +5,9 @@ description: "Script your vidoes with fata morgana"
 maintainer: ["George Potosin"]
 authors: ["George Potoshin"]
 license: "LICENSE"
-homepage: "https://github.com/username/reponame"
+homepage: "https://github.com/GPotoshin/fata-morgana"
 doc: "https://url/to/documentation"
-bug-reports: "https://github.com/username/reponame/issues"
+bug-reports: "https://github.com/GPotoshin/fata-morgana/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.12"}
@@ -27,4 +27,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
+dev-repo: "git+https://github.com/GPotoshin/fata-morgana.git"
