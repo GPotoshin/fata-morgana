@@ -5,6 +5,14 @@
 #include "rusty_int.h"
 
 typedef struct {
+    u32 x, y;
+} u32vec2;
+
+typedef struct {
+    u8 x,y,z;
+} u8vec3;
+
+typedef struct {
     FILE *f;
 
     AVCodecContext *ctx;
@@ -15,6 +23,14 @@ typedef struct {
     u32 counter;
 } FMVideo;
 
-void encode (FMVideo v);
+// for ocaml
+u8 u8_of_int (int x);
+u32 u32_of_int (int x);
+
+FMVideo *init (char *name, int width, int height);
+void add_frame (FMVideo *v);
+void set_pxl (FMVideo *v, u32 p[3], u8 c[2]);
+void encode (FMVideo *v);
+void write_and_close (FMVideo *v);
 
 #endif

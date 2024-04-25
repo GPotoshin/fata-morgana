@@ -20,5 +20,5 @@
  (name fata_morgana)
  (synopsis "alternative to manim")
  (description "Script your vidoes with fata morgana")
- (depends ocaml dune))
+ (depends ocaml dune ctypes))
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

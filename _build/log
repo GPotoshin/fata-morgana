@@ -1,6 +1,33 @@
-# dune build
+# dune run test
 # OCAMLPARAM: unset
 # Shared cache: disabled
 # Shared cache location: /Users/giorno/.cache/dune/db
 # Workspace root: /Users/giorno/projects/fata_morgana
 # Auto-detected concurrency: 4
+# Dune context:
+#  { name = "default"
+#  ; kind = "default"
+#  ; profile = Dev
+#  ; merlin = true
+#  ; fdo_target_exe = None
+#  ; build_dir = In_build_dir "default"
+#  ; installed_env =
+#      map
+#        { "INSIDE_DUNE" : "/Users/giorno/projects/fata_morgana/_build/default"
+#        }
+#  ; instrument_with = []
+#  }
+$ /Users/giorno/.opam/5.0.0+options/bin/ocamlc.opt -config > /var/folders/br/h_q4pb4d7p5ftcv0b4x9n5qr0000gn/T/dune_ce9f17_output
+$ (cd _build/default && /Users/giorno/.opam/5.0.0+options/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I lib/.fmvideo.objs/byte -I lib/.fmvideo.objs/native -I /Users/giorno/.opam/5.0.0+options/lib/bigarray-compat -I /Users/giorno/.opam/5.0.0+options/lib/ctypes -I /Users/giorno/.opam/5.0.0+options/lib/ctypes-foreign -I /Users/giorno/.opam/5.0.0+options/lib/integers -I /Users/giorno/.opam/5.0.0+options/lib/ocaml/threads -I /Users/giorno/.opam/5.0.0+options/lib/ocaml/unix -I /Users/giorno/.opam/5.0.0+options/lib/stdlib-shims -intf-suffix .ml -no-alias-deps -opaque -o lib/.fmvideo.objs/native/fmvideo.cmx -c -impl lib/fmvideo.ml)
+$ (cd _build/default && /Users/giorno/.opam/5.0.0+options/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/fmvideo.cmxa lib/.fmvideo.objs/native/fmvideo.cmx)
+$ (cd _build/default && /Users/giorno/.opam/5.0.0+options/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o test/test_fata_morgana.exe /Users/giorno/.opam/5.0.0+options/lib/stdlib-shims/stdlib_shims.cmxa /Users/giorno/.opam/5.0.0+options/lib/integers/integers.cmxa -I /Users/giorno/.opam/5.0.0+options/lib/integers /Users/giorno/.opam/5.0.0+options/lib/bigarray-compat/bigarray_compat.cmxa /Users/giorno/.opam/5.0.0+options/lib/ctypes/ctypes.cmxa -I /Users/giorno/.opam/5.0.0+options/lib/ctypes /Users/giorno/.opam/5.0.0+options/lib/ocaml/unix/unix.cmxa /Users/giorno/.opam/5.0.0+options/lib/ocaml/threads/threads.cmxa /Users/giorno/.opam/5.0.0+options/lib/ctypes-foreign/ctypes_foreign.cmxa -I /Users/giorno/.opam/5.0.0+options/lib/ctypes-foreign lib/fmvideo.cmxa test/.test_fata_morgana.eobjs/native/dune__exe__Test_fata_morgana.cmx -cclib -L -cclib ../../lib -cclib -lvideo)
+> ld: warning: directory not found for option '-L/usr/local/Cellar/libffi/3.4.4/lib'
+> ld: warning: dylib (/usr/local/opt/llvm/lib/libunwind.dylib) was built for newer macOS version (12.6) than being linked (12.0)
+> ld: warning: dylib (/usr/local/opt/llvm/lib/libunwind.dylib) was built for newer macOS version (12.6) than being linked (12.0)
+> ld: warning: dylib (/usr/local/opt/llvm/lib/libunwind.dylib) was built for newer macOS version (12.6) than being linked (12.0)
+> ld: warning: dylib (/usr/local/opt/llvm/lib/libunwind.dylib) was built for newer macOS version (12.6) than being linked (12.0)
+$ (cd _build/default/test && ./test_fata_morgana.exe)
+> dyld[7121]: Library not loaded: 'lib/libvideo.so'
+>   Referenced from: '/Users/giorno/projects/fata_morgana/_build/default/test/test_fata_morgana.exe'
+>   Reason: tried: 'lib/libvideo.so' (no such file), '/usr/local/lib/libvideo.so' (no such file), '/usr/lib/libvideo.so' (no such file)
+[got signal ABRT]

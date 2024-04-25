@@ -1,3 +1,4 @@
+(*
 type action
-
-val processAction : action -> unit
+val processAction : action list -> unit
+*)

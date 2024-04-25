@@ -1,18 +1,11 @@
-LD_FLAGS += -lavutil -lavcodec 
+lib/libvideo.so: bin/video.o
+	cc -g -lavutil -lavcodec -lm -fPIC -shared -o $@ $<
 
-OBJECTS := bin/video.o bin/action.o
-
-test: $(OBJECTS)
-	cc $(LD_FLAGS) -o test $(OBJECTS)
+bin/test: lib/libvideo.so lib/test.c
+	cc -lvideo -L$(CURDIR)/lib lib/test.c -o bin/test
 
 bin/video.o: lib/video.c
-	cc -c -o bin/video.o lib/video.c	
-
-bin/action.o: lib/video.c
-	cc -c -o bin/action.o lib/action.c
-
-bin/test.o: lib/test.c
-	cc -c -o bin/action.o lib/action.c
+	cc -g -c -o bin/video.o lib/video.c	
 
 run:
-	test test.mpeg mpeg1video
+	bin/test test.mpeg mpeg1video

@@ -1,3 +1,4 @@
 (test
  (name test_fata_morgana)
- (libraries fata_morgana))
+ (link_flags -cclib -L -cclib ../../lib -cclib -lvideo)
+ (libraries fmvideo))
