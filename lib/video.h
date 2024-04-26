@@ -33,4 +33,5 @@ void set_pxl (FMVideo *v, u32 p[3], u8 c[2]);
 void encode (FMVideo *v);
 void write_and_close (FMVideo *v);
 
+void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, u32 w, float t);
 #endif

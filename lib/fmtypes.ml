@@ -1,7 +1,6 @@
 type time   = int
-type radius = int
 type point  = (int*int)
+type color  = (int*int*int)
 
 type action =
-    | DrawLine of point*point*time*time
-    | DrawCircle of point*radius*time*time
+    | DrawCircle of point*color*int*int*time*time

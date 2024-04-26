@@ -10,9 +10,12 @@ const int WIDTH = 720/2;
 int main () {
     FMVideo *v = init ("test.mpeg", WIDTH, HEIGHT);
 
-    for (int i = 0; i < 255; i++) {
+    
+    u8 bg[3] = {0x2E, 0x34, 0x40};
+    u8 c[3] = {0x8F, 0xBC, 0xBB};
+
+    for (int i = 0; i < 50; i++) {
         add_frame (v);
-        u8 c[3] = {0x2E, 0x34, 0x40};
         for (int y = 0; y < HEIGHT*2; y++) {
             for (int x = 0; x < WIDTH*2; x++) {
                 u32 p[2] = {x, y};
@@ -28,9 +31,6 @@ int main () {
             }
         }
 
-        c[0] = 0x8F;
-        c[1] = 0xBC;
-        c[2] = 0xBB;
 
         for (float a = 0; a < (i+1)*2.*M_PI/500; a += M_PI/1000.) {
             for (int r = 0; r < 20 ; r++) {
