@@ -27,11 +27,12 @@ typedef struct {
 u8 u8_of_int (int x);
 u32 u32_of_int (int x);
 
+void rgb2yuv (u8 c[3]);
 FMVideo *init (char *name, int width, int height);
 void add_frame (FMVideo *v);
 void set_pxl (FMVideo *v, u32 p[3], u8 c[2]);
 void encode (FMVideo *v);
 void write_and_close (FMVideo *v);
 
-void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, u32 w, float t);
+void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, i32 w, float t);
 #endif

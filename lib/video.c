@@ -22,12 +22,15 @@ u32 u32_of_int (int x) {
     return x;
 }
 
-u8vec3 rgb2yuv (u8vec3 c) {
-    u8vec3 retval;
-    retval.x = Kr*c.x + Kg*c.y + Kr*c.z;
-    retval.y = -0.168736*c.x + -0.331264*c.y + 0.5*c.z + 128;
-    retval.z = 0.5*c.x + -0.418688*c.y + -0.081312*c.z + 128;;
-    return retval;
+void rgb2yuv (u8 c[3]) {
+    u8vec3 t;
+    t.x = Kr*c[0] + Kg*c[1] + Kr*c[2];
+    t.y = -0.168736*c[0] + -0.331264*c[1] + 0.5*c[2] + 128;
+    t.z = 0.5*c[0] + -0.418688*c[1] + -0.081312*c[2] + 128;;
+
+    c[0] = t.x;
+    c[1] = t.y;
+    c[2] = t.z;
 }
 
 FMVideo *init (char* name, int width, int height) {
@@ -125,13 +128,12 @@ void add_frame (FMVideo *v) {
 }
 
 // staying simple for now
-void set_pxl (FMVideo *v, u32 p[2], u8 b[3]) {
-    u8vec3 c = (u8vec3){b[0], b[1], b[2]};
-    c = rgb2yuv (c);
+void set_pxl (FMVideo *v, u32 p[2], u8 c[3]) {
+    rgb2yuv (c);
 
-    v->frame->data[0][p[1] * v->frame->linesize[0] + p[0]] = c.x;
-    v->frame->data[1][p[1]/2 * v->frame->linesize[1] + p[0]/2] = c.y;
-    v->frame->data[2][p[1]/2 * v->frame->linesize[2] + p[0]/2] = c.z;
+    v->frame->data[0][p[1] * v->frame->linesize[0] + p[0]] = c[0];
+    v->frame->data[1][p[1]/2 * v->frame->linesize[1] + p[0]/2] = c[1];
+    v->frame->data[2][p[1]/2 * v->frame->linesize[2] + p[0]/2] = c[2];
 }
 
 void encode (FMVideo *v) {
@@ -177,40 +179,47 @@ void write_and_close (FMVideo *v) {
     av_packet_free (&v->pkt);
 }
 
-void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, u32 w, float t) {
-    int nframes = t * v->ctx->framerate.den / v->ctx->framerate.num;
+void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, i32 w, float t) {
+    puts("circle\n");
+    float nframes = (t * v->ctx->framerate.num) / v->ctx->framerate.den;
+    printf("num: %d, den: %d, t: %f, nframe: %f\n", v->ctx->framerate.num,
+            v->ctx->framerate.den, t, nframes);
     int *linesize = v->frame->linesize;
     int height = v->ctx->height;
     int width = v->ctx->width;
 
-    u8 **data = v->frame->data;
+    
+
     for (int i = 0; i < nframes; i++) {
+        printf("%d\n", i);
         add_frame(v);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                data[0][y * linesize[0] + x] = bgc[0];
-                data[1][y/2 * linesize[1] + x/2] = bgc[1];
-                data[2][y/2 * linesize[2] + x/2] = bgc[2];
+                v->frame->data[0][y * linesize[0] + x] = bgc[0];
+                v->frame->data[1][y/2 * linesize[1] + x/2] = bgc[1];
+                v->frame->data[2][y/2 * linesize[2] + x/2] = bgc[2];
             }
         }
-        for (float a = 0; a < (1+i)*2.*M_PI/nframes; a += 1./(r+w)) {
-            for (int d = -w*0.5; d < w*0.5; d++) {
-                u32 x = p[0]+(r+d)*cos(a);
-                u32 y = p[1]+(r+d)*cos(a);
+        // 2.3 and 0.6 are fine tuned
+        for (float a = 0; a < i*2.3*M_PI/(nframes-1); a += 0.6/(r+w)) {
+            printf ("%f\n", 180.*a/M_PI);
+            for (int j = -w/2; j <= w/2; j++) {
+                u32 x = p[0]+(r+j)*cos(a);
+                u32 y = p[1]+(r+j)*sin(a);
                 if (x >= width || y >= height) {
                     continue;
                 }
 
-                data[0][y * linesize[0] + x] = c[0];
-                data[1][y/2 * linesize[1] + x/2] = c[1];
-                data[2][y/2 * linesize[2] + x/2] = c[2];
+                v->frame->data[0][y * linesize[0] + x] = c[0];
+                v->frame->data[1][y/2 * linesize[1] + x/2] = c[1];
+                v->frame->data[2][y/2 * linesize[2] + x/2] = c[2];
             }
         }
 
         // 0.0625 0.5
         for (int y = 0; y < height/2; y++) {
             for (int x = 0; x < width/2; x++) {
-                u8 sm[3] = {0,0,0};
+                float sm[3] = {0,0,0};
                 float mask[3][3] =
                     {1./16, 1./16, 1./16,
                      1./16, 1./2 , 1./16,
@@ -221,11 +230,17 @@ void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, u32 w, float t) {
                             continue;
                         }
 
-                        sm[0] += data[0][2*(y+yy)*linesize[0] + 2*(x+xx)] * mask[1+yy][1+xx];
-                        sm[1] += data[1][(y+yy)*linesize[1] + (x+xx)] * mask[1+yy][1+xx];
-                        sm[2] += data[2][(y+yy)*linesize[2] + (x+xx)] * mask[1+yy][1+xx];
+                        sm[0] += v->frame->data[0][2*(y+yy)*linesize[0] + 2*(x+xx)] * mask[1+yy][1+xx];
+                        sm[1] += v->frame->data[1][(y+yy)*linesize[1] + (x+xx)] * mask[1+yy][1+xx];
+                        sm[2] += v->frame->data[2][(y+yy)*linesize[2] + (x+xx)] * mask[1+yy][1+xx];
                     }
                 }
+                v->frame->data[0][2*y * linesize[0] + 2*x] = sm[0];
+                v->frame->data[0][(2*y+1) * linesize[0] + 2*x] = sm[0];
+                v->frame->data[0][(2*y+1) * linesize[0] + 2*x+1] = sm[0];
+                v->frame->data[0][2*y * linesize[0] + 2*x+1] = sm[0];
+                v->frame->data[1][y * linesize[1] + x] = sm[1];
+                v->frame->data[2][y * linesize[2] + x] = sm[2];
             }
         }
         encode (v);
