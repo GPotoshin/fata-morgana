@@ -281,13 +281,13 @@ void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t) {
     }
 }
 
-void write_text (FMVideo *v, u32 p[2], u8 c[3], char str[], int len) {
+void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], char str[], int len) {
     add_frame(v);
     int *linesize = v->frame->linesize;
 
     SFT sft = {
-        .xScale = 16,
-        .yScale = 16,
+        .xScale = 30,
+        .yScale = 30,
         .flags  = SFT_DOWNWARD_Y,
     };
     char font_name[] = "APL386B.ttf";
@@ -297,11 +297,9 @@ void write_text (FMVideo *v, u32 p[2], u8 c[3], char str[], int len) {
         printf ("Couldn't fing font %s\n", font_name);
         exit(1);
     }
-    puts ("font is loaded\n");
 
     unsigned *codepoints = malloc (len*sizeof(unsigned));
     utf8_to_utf32 ((const u8 *)str, codepoints, len);
-    puts ("to utf32 converted\n");
 
     for (int i = 0; i < len; i++) {
         SFT_Glyph gid;
@@ -309,14 +307,12 @@ void write_text (FMVideo *v, u32 p[2], u8 c[3], char str[], int len) {
             printf ("Missing 0x%04X\n", codepoints[i]); 
             exit(1);
         }
-        puts ("glyph is found\n");
 
         SFT_GMetrics mtx;
         if (sft_gmetrics(&sft, gid, &mtx) < 0) {
             printf ("bad glyph metrics 0x%04X\n", codepoints[i]);
             exit(1);
         }
-        puts ("metrics is calculated\n");
 
         SFT_Image img = {
             .width = (mtx.minWidth + 3) & ~3,
@@ -328,19 +324,26 @@ void write_text (FMVideo *v, u32 p[2], u8 c[3], char str[], int len) {
             printf ("not rendered 0x%04X\n", codepoints[i]);
             exit(1);
         }
-        puts ("pixels are rendered\n");
 
+        printf ("w: %d, h: %d\n", img.width, img.height);
         for (int x = 0; x < img.width; x++) {
             for (int y = 0; y < img.height; y++) {
+
                 float m = ((u8 *)img.pixels)[y*img.width + x]/255.;
-                v->frame->data[0][(y+p[1]) * linesize[0] + (x+p[0])] = c[0]*m;
-                v->frame->data[1][(y+p[1])/2 * linesize[1] + (x+p[0])/2] = c[1];
-                v->frame->data[2][(y+p[1])/2 * linesize[2] + (x+p[0])/2] = c[2];
+                printf ("%2f ",m);
+                v->frame->data[0][(y+p[1]) * linesize[0] + (x+p[0])] = c[0]*m + bg[0]*(1-m);
+                v->frame->data[1][(y+p[1])/2 * linesize[1] + (x+p[0])/2] = c[1]*m + bg[1]*(1-m);
+                v->frame->data[2][(y+p[1])/2 * linesize[2] + (x+p[0])/2] = c[2]*m + bg[2]*(1-m);
             }
+            puts("");
         }
 
         free (pixels);
     }
     encode(v);
     sft_freefont(sft.font);
+}
+
+void write_text2 (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], char str[], int len) {
+    add_frame (v);
 }
