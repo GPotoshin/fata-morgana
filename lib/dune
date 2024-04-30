@@ -1,9 +1,4 @@
 (library
  (name fata_morgana)
- (modules fata_morgana fmtypes)
+ (modules fata_morgana)
  (libraries ctypes-foreign))
-
-(library
-  (name fmvideo)
-  (modules fmvideo)
-  (libraries ctypes-foreign))

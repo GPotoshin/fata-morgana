@@ -10,27 +10,22 @@ let u8_of_int =
 let u32_of_int =
     foreign "u32_of_int" (int @-> (returning uint32_t))
 
-let set_pxl =
-    foreign "set_pxl" (fmvideo @-> (ptr void) @-> (ptr void) @-> (returning void))
-
 let init =
     foreign "init" (string @-> int @-> int @-> (returning fmvideo))
-
-let add_frame =
-    foreign "add_frame" (fmvideo @-> int @-> (returning void))
-
-let encode =
-    foreign "encode" (fmvideo @-> (returning void))
 
 let write_and_close =
     foreign "write_and_close" (fmvideo @-> (returning void))
 
+(*void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t);*)
+let circle =
+    foreign "circle" (fmvideo @-> ptr uint32_t @-> ptr uint8_t @-> ptr uint8_t
+    @-> int @-> int @-> float @-> (returning void))
 
 let make_color r g b =
-    to_voidp (CArray.start(CArray.of_list uint8_t
+    (CArray.start(CArray.of_list uint8_t
     [(u8_of_int r);(u8_of_int g);(u8_of_int b)]))
 
 
 let make_point x y =
-    to_voidp (CArray.start(CArray.of_list uint32_t
+    (CArray.start(CArray.of_list uint32_t
     [(u32_of_int x);(u32_of_int y)]))

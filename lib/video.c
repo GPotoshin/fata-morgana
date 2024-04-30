@@ -9,10 +9,23 @@
 #include <libavutil/imgutils.h>
 
 #include "video.h"
+#include "../libschrift/schrift.h"
+#include "../libschrift/util/utf8_to_utf32.h"
 
 const double Kr = 0.299;
 const double Kg = 0.587;
 const double Kb = 0.114;
+
+#define max(a, b) (a > b ? a : b)
+#define min(a, b) (a < b ? a : b)
+
+float vector_angle (int x, int y) {
+    if (y >= 0) {
+        return atan2(y,x);
+    } else {
+        return atan2(y,x)+2*M_PI;
+    }
+}
 
 u8 u8_of_int (int x) {
     return x;
@@ -179,19 +192,16 @@ void write_and_close (FMVideo *v) {
     av_packet_free (&v->pkt);
 }
 
-void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, i32 w, float t) {
-    puts("circle\n");
+void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t) {
     float nframes = (t * v->ctx->framerate.num) / v->ctx->framerate.den;
-    printf("num: %d, den: %d, t: %f, nframe: %f\n", v->ctx->framerate.num,
-            v->ctx->framerate.den, t, nframes);
     int *linesize = v->frame->linesize;
     int height = v->ctx->height;
     int width = v->ctx->width;
+    rgb2yuv(c);
+    rgb2yuv(bgc);
 
-    
 
     for (int i = 0; i < nframes; i++) {
-        printf("%d\n", i);
         add_frame(v);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -200,49 +210,137 @@ void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], u32 r, i32 w, float t) {
                 v->frame->data[2][y/2 * linesize[2] + x/2] = bgc[2];
             }
         }
-        // 2.3 and 0.6 are fine tuned
-        for (float a = 0; a < i*2.3*M_PI/(nframes-1); a += 0.6/(r+w)) {
-            printf ("%f\n", 180.*a/M_PI);
-            for (int j = -w/2; j <= w/2; j++) {
-                u32 x = p[0]+(r+j)*cos(a);
-                u32 y = p[1]+(r+j)*sin(a);
-                if (x >= width || y >= height) {
+        // drawing circle with Box filter
+        // strange warning when passing {0x8F, 0xBC, 0xBB} to c?
+        // do not see the reason it should clip
+        for (int x = max(p[0]-r-w, 0); x < min(width, p[0]+r+w); x++) {
+            for (int y = max(p[1]-r-w, 0); y < min(height, p[1]+r+w); y++) {
+                float sm[3] = {0, 0, 0};
+                u8 out_counter = 0;
+
+                if ((x+0.25-p[0])*(x+0.25-p[0]) + (y+0.125-p[1])*(y+0.125-p[1]) >= (r-w)*(r-w) &&
+                        (x+0.25-p[0])*(x+0.25-p[0]) + (y+0.125-p[1])*(y+0.125-p[1]) <= (r+w)*(r+w) &&
+                        vector_angle(x+0.25-p[0], y+0.125-p[1]) <= 2.3*i*M_PI/(nframes-1)) {
+                    sm[0] += 0.25 * c[0];
+                    sm[1] += 0.25 * c[1];
+                    sm[2] += 0.25 * c[2];
+                } else {
+                    out_counter++;
+                    sm[0] += 0.25 * bgc[0];
+                    sm[1] += 0.25 * bgc[1];
+                    sm[2] += 0.25 * bgc[2];
+                }
+
+                if ((x+0.125-p[0])*(x+0.125-p[0]) + (y+0.75-p[1])*(y+0.75-p[1]) >= (r-w)*(r-w) &&
+                        (x+0.125-p[0])*(x+0.125-p[0]) + (y+0.75-p[1])*(y+0.75-p[1]) <= (r+w)*(r+w)&&
+                        vector_angle(x+0.125-p[0], y+0.75-p[1]) <= 2.3*i*M_PI/(nframes-1)) {
+                    sm[0] += 0.25 * c[0];
+                    sm[1] += 0.25 * c[1];
+                    sm[2] += 0.25 * c[2];
+                } else {
+                    out_counter++;
+                    sm[0] += 0.25 * bgc[0];
+                    sm[1] += 0.25 * bgc[1];
+                    sm[2] += 0.25 * bgc[2];
+                }
+                if ((x+0.75-p[0])*(x+0.75-p[0]) + (y+0.875-p[1])*(y+0.875-p[1]) >= (r-w)*(r-w) &&
+                        (x+0.75-p[0])*(x+0.75-p[0]) + (y+0.875-p[1])*(y+0.875-p[1]) <= (r+w)*(r+w) &&
+                        vector_angle(x+0.75-p[0], y+0.825-p[1]) <= 2.3*i*M_PI/(nframes-1)) {
+                    sm[0] += 0.25 * c[0];
+                    sm[1] += 0.25 * c[1];
+                    sm[2] += 0.25 * c[2];
+                } else {
+                    out_counter++;
+                    sm[0] += 0.25 * bgc[0];
+                    sm[1] += 0.25 * bgc[1];
+                    sm[2] += 0.25 * bgc[2];
+                }
+                if ((x+0.875-p[0])*(x+0.875-p[0]) + (y+0.25-p[1])*(y+0.25-p[1]) >= (r-w)*(r-w) &&
+                        (x+0.875-p[0])*(x+0.875-p[0]) + (y+0.25-p[1])*(y+0.25-p[1]) <= (r+w)*(r+w) &&
+                        vector_angle(x+0.875-p[0], y+0.25-p[1]) <= 2.3*i*M_PI/(nframes-1)) {
+                    sm[0] += 0.25 * c[0];
+                    sm[1] += 0.25 * c[1];
+                    sm[2] += 0.25 * c[2];
+                } else {
+                    out_counter++;
+                    sm[0] += 0.25 * bgc[0];
+                    sm[1] += 0.25 * bgc[1];
+                    sm[2] += 0.25 * bgc[2];
+                }
+                if (out_counter == 4) {
                     continue;
                 }
 
-                v->frame->data[0][y * linesize[0] + x] = c[0];
-                v->frame->data[1][y/2 * linesize[1] + x/2] = c[1];
-                v->frame->data[2][y/2 * linesize[2] + x/2] = c[2];
+                v->frame->data[0][y * linesize[0] + x] = sm[0];
+                v->frame->data[1][y/2 * linesize[1] + x/2] = sm[1];
+                v->frame->data[2][y/2 * linesize[2] + x/2] = sm[2];
             }
         }
 
-        // 0.0625 0.5
-        for (int y = 0; y < height/2; y++) {
-            for (int x = 0; x < width/2; x++) {
-                float sm[3] = {0,0,0};
-                float mask[3][3] =
-                    {1./16, 1./16, 1./16,
-                     1./16, 1./2 , 1./16,
-                     1./16, 1./16, 1./16};
-                for (int xx = -1; xx < 2; xx++) {
-                    for (int yy = -1; yy < 2; yy++) {
-                        if (xx+x<0||xx+x>=width/2||yy+y<0||yy+y>=height/2) {
-                            continue;
-                        }
-
-                        sm[0] += v->frame->data[0][2*(y+yy)*linesize[0] + 2*(x+xx)] * mask[1+yy][1+xx];
-                        sm[1] += v->frame->data[1][(y+yy)*linesize[1] + (x+xx)] * mask[1+yy][1+xx];
-                        sm[2] += v->frame->data[2][(y+yy)*linesize[2] + (x+xx)] * mask[1+yy][1+xx];
-                    }
-                }
-                v->frame->data[0][2*y * linesize[0] + 2*x] = sm[0];
-                v->frame->data[0][(2*y+1) * linesize[0] + 2*x] = sm[0];
-                v->frame->data[0][(2*y+1) * linesize[0] + 2*x+1] = sm[0];
-                v->frame->data[0][2*y * linesize[0] + 2*x+1] = sm[0];
-                v->frame->data[1][y * linesize[1] + x] = sm[1];
-                v->frame->data[2][y * linesize[2] + x] = sm[2];
-            }
-        }
         encode (v);
     }
+}
+
+void write_text (FMVideo *v, u32 p[2], u8 c[3], char str[], int len) {
+    add_frame(v);
+    int *linesize = v->frame->linesize;
+
+    SFT sft = {
+        .xScale = 16,
+        .yScale = 16,
+        .flags  = SFT_DOWNWARD_Y,
+    };
+    char font_name[] = "APL386B.ttf";
+
+    sft.font = sft_loadfile(font_name);
+    if (sft.font == NULL) {
+        printf ("Couldn't fing font %s\n", font_name);
+        exit(1);
+    }
+    puts ("font is loaded\n");
+
+    unsigned *codepoints = malloc (len*sizeof(unsigned));
+    utf8_to_utf32 ((const u8 *)str, codepoints, len);
+    puts ("to utf32 converted\n");
+
+    for (int i = 0; i < len; i++) {
+        SFT_Glyph gid;
+        if (sft_lookup(&sft, codepoints[i], &gid) < 0) {
+            printf ("Missing 0x%04X\n", codepoints[i]); 
+            exit(1);
+        }
+        puts ("glyph is found\n");
+
+        SFT_GMetrics mtx;
+        if (sft_gmetrics(&sft, gid, &mtx) < 0) {
+            printf ("bad glyph metrics 0x%04X\n", codepoints[i]);
+            exit(1);
+        }
+        puts ("metrics is calculated\n");
+
+        SFT_Image img = {
+            .width = (mtx.minWidth + 3) & ~3,
+            .height = mtx.minHeight
+        };
+        u8 *pixels = malloc (img.width * img.height);
+        img.pixels = pixels;
+        if (sft_render(&sft, gid, img) < 0) {
+            printf ("not rendered 0x%04X\n", codepoints[i]);
+            exit(1);
+        }
+        puts ("pixels are rendered\n");
+
+        for (int x = 0; x < img.width; x++) {
+            for (int y = 0; y < img.height; y++) {
+                float m = ((u8 *)img.pixels)[y*img.width + x]/255.;
+                v->frame->data[0][(y+p[1]) * linesize[0] + (x+p[0])] = c[0]*m;
+                v->frame->data[1][(y+p[1])/2 * linesize[1] + (x+p[0])/2] = c[1];
+                v->frame->data[2][(y+p[1])/2 * linesize[2] + (x+p[0])/2] = c[2];
+            }
+        }
+
+        free (pixels);
+    }
+    encode(v);
+    sft_freefont(sft.font);
 }

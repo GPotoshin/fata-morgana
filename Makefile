@@ -1,5 +1,5 @@
 lib/libvideo.so: bin/video.o
-	cc -g -lavutil -lavcodec -lm -fPIC -shared -o $@ $<
+	cc -g -L$(CURDIR)/lib -lschrift -lavutil -lavcodec -lm -fPIC -shared -o $@ $<
 
 bin/test: lib/libvideo.so lib/test.c
 	cc -lvideo -L$(CURDIR)/lib lib/test.c -o bin/test

@@ -1,0 +1,4 @@
+(lang dune 3.15)
+(name fata-morgana)
+(sections (lib .) (doc ../../doc/fata-morgana))
+(files (lib (META dune-package opam)) (doc (README.md)))

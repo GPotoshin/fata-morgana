@@ -1,6 +1,6 @@
 (lang dune 3.12)
 
-(name fata_morgana)
+(name fata-morgana)
 
 (generate_opam_files true)
 
@@ -17,7 +17,7 @@
 (using ctypes 0.3)
 
 (package
- (name fata_morgana)
+ (name fata-morgana)
  (synopsis "alternative to manim")
  (description "Script your vidoes with fata morgana")
  (depends ocaml dune ctypes))
