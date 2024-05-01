@@ -35,5 +35,5 @@ void encode (FMVideo *v);
 void write_and_close (FMVideo *v);
 
 void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t);
-void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], char str[], int len);
+void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len);
 #endif

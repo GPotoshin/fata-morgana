@@ -8,6 +8,9 @@
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
 
+#include <ft2build.h>
+#include <freetype/freetype.h>
+
 #include "video.h"
 #include "../libschrift/schrift.h"
 #include "../libschrift/util/utf8_to_utf32.h"
@@ -281,69 +284,76 @@ void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t) {
     }
 }
 
-void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], char str[], int len) {
-    add_frame(v);
-    int *linesize = v->frame->linesize;
+void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len) {
+    add_frame (v);
+    
+    FT_Library lib;
+    FT_Face face;
 
-    SFT sft = {
-        .xScale = 30,
-        .yScale = 30,
-        .flags  = SFT_DOWNWARD_Y,
-    };
-    char font_name[] = "APL386B.ttf";
+    int err = FT_Init_FreeType(&lib);
 
-    sft.font = sft_loadfile(font_name);
-    if (sft.font == NULL) {
-        printf ("Couldn't fing font %s\n", font_name);
-        exit(1);
+    if (err) {
+        puts("... an error occurred during library initialization ...");
+        return;
     }
 
-    unsigned *codepoints = malloc (len*sizeof(unsigned));
-    utf8_to_utf32 ((const u8 *)str, codepoints, len);
+    err = FT_New_Face(lib, "/Users/giorno/Library/Fonts/Euler-Math.otf", 0, &face);    
+    if (err == FT_Err_Unknown_File_Format) {
+        puts("... the font file could be opened and read, but it appears\n"
+             "... that its font format is unsupported");
+        return;
+    } else if (err) {
+        puts("font file could not be opened or read, or it is broken");
+        return;
+    }
 
+    err = FT_Set_Char_Size (face, 0, 16*64, 300, 300);
+    if (err) {
+        puts("couldn't set char size");
+        return;
+    }
+
+    FT_UInt old_index = 0;
+    int pen_x = 0;
     for (int i = 0; i < len; i++) {
-        SFT_Glyph gid;
-        if (sft_lookup(&sft, codepoints[i], &gid) < 0) {
-            printf ("Missing 0x%04X\n", codepoints[i]); 
-            exit(1);
+        FT_UInt glyph_index = FT_Get_Char_Index(face, str[i]);
+        err = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
+        if (err) {
+            puts("couldn't load a glyph");
+            return;
         }
 
-        SFT_GMetrics mtx;
-        if (sft_gmetrics(&sft, gid, &mtx) < 0) {
-            printf ("bad glyph metrics 0x%04X\n", codepoints[i]);
-            exit(1);
-        }
-
-        SFT_Image img = {
-            .width = (mtx.minWidth + 3) & ~3,
-            .height = mtx.minHeight
-        };
-        u8 *pixels = malloc (img.width * img.height);
-        img.pixels = pixels;
-        if (sft_render(&sft, gid, img) < 0) {
-            printf ("not rendered 0x%04X\n", codepoints[i]);
-            exit(1);
-        }
-
-        printf ("w: %d, h: %d\n", img.width, img.height);
-        for (int x = 0; x < img.width; x++) {
-            for (int y = 0; y < img.height; y++) {
-
-                float m = ((u8 *)img.pixels)[y*img.width + x]/255.;
-                printf ("%2f ",m);
-                v->frame->data[0][(y+p[1]) * linesize[0] + (x+p[0])] = c[0]*m + bg[0]*(1-m);
-                v->frame->data[1][(y+p[1])/2 * linesize[1] + (x+p[0])/2] = c[1]*m + bg[1]*(1-m);
-                v->frame->data[2][(y+p[1])/2 * linesize[2] + (x+p[0])/2] = c[2]*m + bg[2]*(1-m);
+        if (i > 0) {
+            FT_Vector kerning;
+            err = FT_Get_Kerning(face, old_index, glyph_index, FT_KERNING_DEFAULT, &kerning);
+            if (err) {
+                puts("error in defining kerning");
+                return;
             }
-            puts("");
+            pen_x += kerning.x >> 6;
         }
 
-        free (pixels);
+        err = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+        if (err) {
+            puts("error in rendering");
+            return;
+        }
+
+        int *linesize = v->frame->linesize;
+        FT_Bitmap bitmap = face->glyph->bitmap;
+        printf ("w: %d, h: %d\n", bitmap.width, bitmap.rows);
+        printf ("[%d, %d, %d]\n", linesize[0], linesize[1], linesize[2]);
+        for (int x = 0; x < bitmap.width; x++) {
+            for (int y = 0; y < bitmap.rows; y++) {
+                float m = bitmap.buffer[y*bitmap.width + x]/225.;
+
+                v->frame->data[0][(y+p[1]) * linesize[0] + (x+p[0]+pen_x)] = c[0]*m + bg[0]*(1-m);
+                v->frame->data[1][(y+p[1])/2 * linesize[1] + (x+p[0])/2+pen_x] = c[1]*m + bg[1]*(1-m);
+                v->frame->data[2][(y+p[1])/2 * linesize[2] + (x+p[0])/2+pen_x] = c[2]*m + bg[2]*(1-m);
+            }
+        }
+        pen_x += face->glyph->advance.x;
+        old_index = glyph_index;
     }
     encode(v);
-    sft_freefont(sft.font);
-}
-
-void write_text2 (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], char str[], int len) {
-    add_frame (v);
 }

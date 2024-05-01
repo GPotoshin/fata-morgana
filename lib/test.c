@@ -20,7 +20,7 @@ int main () {
     printf ("writing text\n");
     p[0] = 200;
     p[1] = 200;
-    write_text(v, p, bg, c, "i", 1);
+    write_text (v, p, bg, c, "i", 1);
     write_and_close (v);
 }
 

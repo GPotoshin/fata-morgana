@@ -14,6 +14,10 @@ let () =
     let p = make_point 100 100 in
 
     circle v p bgc c 50 5 1.;
+    do_action v (FMText ("Hello!", 100, 100));
+    do_action v (FMText ("Hello!", 100, 100));
+    do_action v (FMText ("Hello!", 100, 100));
+    do_action v (FMText ("Hello!", 100, 100));
 
     write_and_close v;
 ;;

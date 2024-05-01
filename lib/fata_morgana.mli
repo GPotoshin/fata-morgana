@@ -3,6 +3,9 @@ open Unsigned
 
 type fmvideo
 
+type fmaction =
+| FMText of string*int*int(*int*int*)
+
 val make_color : int -> int -> int -> UInt8.t ptr
 val make_point : int -> int -> UInt32.t ptr
 
@@ -11,3 +14,5 @@ val write_and_close : fmvideo -> unit
 
 val circle : fmvideo -> UInt32.t ptr -> UInt8.t ptr ->
     UInt8.t ptr -> int -> int -> float -> unit
+
+val do_action : fmvideo -> fmaction -> unit
