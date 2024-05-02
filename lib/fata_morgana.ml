@@ -13,8 +13,12 @@ let u32_of_int =
 let init_video =
     foreign "init" (string @-> int @-> int @-> (returning fmvideo))
 
-let write_and_close =
+let cwrite_and_close =
     foreign "write_and_close" (fmvideo @-> (returning void))
+
+let write_and_close v =
+    let (_, video) = v in
+    cwrite_and_close video
 
 (*void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t);*)
 let circle =
@@ -35,49 +39,139 @@ let make_point x y =
     [(u32_of_int x);(u32_of_int y)]))
 ;;
 
-type color =
-| FMDark0 of int
-| FMDark1 of int
-| FMDark2 of int
-| FMDark3 of int
-| FMLight0 of int
-| FMLight1 of int
-| FMLight2 of int
-| FMRed of int
-| FMGreen of int
-| FMYellow of int
-| FMBlue of int
-| FMPurple of int
-| FMAqua of int
-| FMOrange of int
-| FMDeepBlue of int
-| FMLightBlue of int
+type fmcolor =
+| Dark0 of int
+| Dark1 of int
+| Dark2 of int
+| Dark3 of int
+| Light0 of int
+| Light1 of int
+| Light2 of int
+| Red of int
+| Green of int
+| Yellow of int
+| Blue of int
+| Purple of int
+| Aqua of int
+| Orange of int
+| DeepBlue of int
+| LightBlue of int
 
+let dark0 c =
+    match c with
+    | Dark0 num -> Some(num)
+    | _ -> None
+;;
+let dark1 c =
+    match c with
+    | Dark1 num -> Some(num)
+    | _ -> None
+;;
+let dark2 c =
+    match c with
+    | Dark2 num -> Some(num)
+    | _ -> None
+;;
+let dark3 c =
+    match c with
+    | Dark3 num -> Some(num)
+    | _ -> None
+;;
+let light0 c =
+    match c with
+    | Light0 num -> Some(num)
+    | _ -> None
+;;
+let light1 c =
+    match c with
+    | Light1 num -> Some(num)
+    | _ -> None
+;;
+let light2 c =
+    match c with
+    | Light2 num -> Some(num)
+    | _ -> None
+;;
+let red c =
+    match c with
+    | Red num -> Some(num)
+    | _ -> None
+;;
+let green c =
+    match c with
+    | Green num -> Some(num)
+    | _ -> None
+;;
+let yellow c =
+    match c with
+    | Yellow num -> Some(num)
+    | _ -> None
+;;
+let blue c =
+    match c with
+    | Blue num -> Some(num)
+    | _ -> None
+;;
+let purple c =
+    match c with
+    | Purple num -> Some(num)
+    | _ -> None
+;;
+let aqua c =
+    match c with
+    | Aqua num -> Some(num)
+    | _ -> None
+;;
+let orange c =
+    match c with
+    | Orange num -> Some(num)
+    | _ -> None
+;;
+let deepBlue c =
+    match c with
+    | DeepBlue num -> Some(num)
+    | _ -> None
+;;
+let lightBlue c =
+    match c with
+    | LightBlue num -> Some(num)
+    | _ -> None
+;;
+
+let rec find_color color_type colors =
+    match colors with
+    | f :: r -> (match color_type f with
+        | Some(num) -> Some(make_color ((num lsr 16) land 255) ((num lsr 8) land 255) (num land 255))
+        | None -> find_color color_type r)
+    | [] -> None
+;;
 
 let init name w h =
     let colorset = [
-        FMDark0 0x2e3440,
-        FMDark1 0x3b4252,
-        FMDark2 0x434c5e,
-        FMDark3 0x4c564a,
-        FMLight0 0xeceff4,
-        FMLight1 0xe5e9f0,
-        FMLight2 0xd8dee9,
-        FMRed 0xbf616a,
-        FMGreen 0xa3be8c,
-        FMYellow 0xebcb8b,
-        FMBlue 0x81a1c1,
-        FMPurple 0xb48ed,
-        FMAqua 0x8fbcbb,
-        FMOrange 0xd08770,
-        FMDeepBlue 0x5e81ac,
-        FMLightBlue 0x88c0d0
+        Dark0 0x2e3440;
+        Dark1 0x3b4252;
+        Dark2 0x434c5e;
+        Dark3 0x4c564a;
+        Light0 0xeceff4;
+        Light1 0xe5e9f0;
+        Light2 0xd8dee9;
+        Red 0xbf616a;
+        Green 0xa3be8c;
+        Yellow 0xebcb8b;
+        Blue 0x81a1c1;
+        Purple 0xb48ed;
+        Aqua 0x8fbcbb;
+        Orange 0xd08770;
+        DeepBlue 0x5e81ac;
+        LightBlue 0x88c0d0;
     ] in
     (colorset, init_video name w h)
 ;;
 
 type fmaction =
 | FMText of string*int*int(*int*int*)
+| FMCircle of int*int*int*int*float
+(*void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t);*)
 
 let do_action v acc =
     match acc with
@@ -86,10 +180,25 @@ let do_action v acc =
             let ascii_list = List.of_seq (Seq.map Char.code seq) in
             let ascii_carray = CArray.of_list int ascii_list in
             
-            let bg = make_color 0x2E 0x34 0x40 in
-            let c = make_color 0x8F 0xBC 0xBB in
-            let p = make_point x y in
+            let (colors, vid) = v in
 
-            write_text v p bg c (CArray.start ascii_carray) (String.length str);
-    ()
+            (match find_color dark0 colors with
+            | None -> print_endline "can't find color dark0";
+            | Some(bg) -> 
+            (match find_color light0 colors with
+            | None -> print_endline "can't find color light0";
+            | Some(c) -> let p = make_point x y in
+            write_text vid p bg c (CArray.start ascii_carray) (String.length str);
+            ))
+    | FMCircle (x, y, r, w, t) -> 
+            let (colors, vid) = v in
+
+            match find_color dark0 colors with
+            | None -> print_endline "can't find color dark0";
+            | Some(bg) -> 
+            (match find_color light0 colors with
+            | None -> print_endline "can't find color light0";
+            | Some(c) -> let p = make_point x y in
+            circle vid p bg c r w t;
+            )
 ;;

@@ -1,5 +1,5 @@
 CC_FLAGS += -O2 -g -I/usr/local/include/freetype2
-LD_FLAGS += -L$(CURDIR)/lib -lfreetype -lschrift -lavcodec -lm -fPIC
+LD_FLAGS += -L$(CURDIR)/lib -lfreetype -lavcodec -lm -fPIC
 
 lib/libvideo.so: bin/video.o
 	cc $(CC_FLAGS) $(LD_FLAGS) -shared -o $@ $<
