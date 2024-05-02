@@ -12,8 +12,6 @@
 #include <freetype/freetype.h>
 
 #include "video.h"
-#include "../libschrift/schrift.h"
-#include "../libschrift/util/utf8_to_utf32.h"
 
 const double Kr = 0.299;
 const double Kg = 0.587;
@@ -315,6 +313,7 @@ void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len) {
 
     FT_UInt old_index = 0;
     int pen_x = 0;
+    int pen_y = 0;
     for (int i = 0; i < len; i++) {
         FT_UInt glyph_index = FT_Get_Char_Index(face, str[i]);
         err = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
@@ -347,12 +346,16 @@ void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len) {
             for (int y = 0; y < bitmap.rows; y++) {
                 float m = bitmap.buffer[y*bitmap.width + x]/225.;
 
-                v->frame->data[0][(y+p[1]) * linesize[0] + (x+p[0]+pen_x)] = c[0]*m + bg[0]*(1-m);
-                v->frame->data[1][(y+p[1])/2 * linesize[1] + (x+p[0])/2+pen_x] = c[1]*m + bg[1]*(1-m);
-                v->frame->data[2][(y+p[1])/2 * linesize[2] + (x+p[0])/2+pen_x] = c[2]*m + bg[2]*(1-m);
+                v->frame->data[0][(y+p[1]+pen_y-face->glyph->bitmap_top) *
+                    linesize[0] + (x+p[0]+pen_x+face->glyph->bitmap_left)] = c[0]*m + bg[0]*(1-m);
+                v->frame->data[1][(y+p[1]+pen_y-face->glyph->bitmap_top)/2 *
+                    linesize[1] + (x+p[0]+pen_x+face->glyph->bitmap_left)/2] = c[1]*m + bg[1]*(1-m);
+                v->frame->data[2][(y+p[1]+pen_y-face->glyph->bitmap_top)/2 *
+                    linesize[2] + (x+p[0]+pen_x+face->glyph->bitmap_left)/2] = c[2]*m + bg[2]*(1-m);
             }
         }
-        pen_x += face->glyph->advance.x;
+        pen_x += face->glyph->advance.x>>6;
+        pen_y += face->glyph->advance.y>>6;
         old_index = glyph_index;
     }
     encode(v);

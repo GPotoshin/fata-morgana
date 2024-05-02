@@ -20,7 +20,11 @@ int main () {
     printf ("writing text\n");
     p[0] = 200;
     p[1] = 200;
-    write_text (v, p, bg, c, "i", 1);
+    u32 str[] = {'H', 'e', 'l', 'l', 'o', '!'};
+    write_text (v, p, bg, c, str, 6);
+    write_text (v, p, bg, c, str, 6);
+    write_text (v, p, bg, c, str, 6);
+    write_text (v, p, bg, c, str, 6);
     write_and_close (v);
 }
 
