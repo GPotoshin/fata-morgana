@@ -11,13 +11,18 @@ int main () {
 
     
     u8 bg[3] = {0x2E, 0x34, 0x40};
-    u8 c[3] = {0x8F, 0xBC, 0xBB};
+    u8 c[3] = {0xEC, 0xEF, 0xF4};
+    printf("c: %d, %d, %d\n", c[0], c[1], c[2]);
+    rgb2yuv(c);
+    rgb2yuv(bg);
+    printf("c: %d, %d, %d\n", c[0], c[1], c[2]);
 
     u32 p[2] = {100, 100};
 
-    printf ("writing circle\n");
-    circle (v, p, bg, c, 50, 5, 1.);
-    printf ("writing text\n");
+    paint_background(v, bg);
+    paint_background(v, bg);
+    paint_background(v, bg);
+    circle(v, p, bg, c, 50, 5, 2.);
     p[0] = 200;
     p[1] = 200;
     u32 str[] = {'H', 'e', 'l', 'l', 'o', '!'};

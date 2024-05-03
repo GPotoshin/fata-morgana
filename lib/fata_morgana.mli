@@ -22,8 +22,9 @@ type fmcolor =
 | LightBlue of int
 
 type fmaction =
-| FMText of string*int*int(*int*int*)
-| FMCircle of int*int*int*int*float
+| Text of string*int*int(*int*int*)
+| Circle of int*int*int*int*float
+| Background
 
 val make_color : int -> int -> int -> UInt8.t ptr
 val make_point : int -> int -> UInt32.t ptr

@@ -29,6 +29,9 @@ let write_text =
     foreign "write_text" (fmvideo @-> ptr uint32_t @-> ptr uint8_t @-> ptr uint8_t
     @-> ptr int @-> int @-> (returning void))
 
+let paint_background =
+    foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
+
 let make_color r g b =
     (CArray.start(CArray.of_list uint8_t
     [(u8_of_int r);(u8_of_int g);(u8_of_int b)]))
@@ -169,13 +172,14 @@ let init name w h =
 ;;
 
 type fmaction =
-| FMText of string*int*int(*int*int*)
-| FMCircle of int*int*int*int*float
+| Text of string*int*int(*int*int*)
+| Circle of int*int*int*int*float
+| Background
 (*void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t);*)
 
 let do_action v acc =
     match acc with
-    | FMText (str, x, y) ->
+    | Text (str, x, y) ->
             let seq = String.to_seq str in
             let ascii_list = List.of_seq (Seq.map Char.code seq) in
             let ascii_carray = CArray.of_list int ascii_list in
@@ -185,20 +189,25 @@ let do_action v acc =
             (match find_color dark0 colors with
             | None -> print_endline "can't find color dark0";
             | Some(bg) -> 
-            (match find_color light0 colors with
+            (match find_color orange colors with
             | None -> print_endline "can't find color light0";
             | Some(c) -> let p = make_point x y in
             write_text vid p bg c (CArray.start ascii_carray) (String.length str);
             ))
-    | FMCircle (x, y, r, w, t) -> 
+    | Circle (x, y, r, w, t) -> 
             let (colors, vid) = v in
 
-            match find_color dark0 colors with
+            (match find_color dark0 colors with
             | None -> print_endline "can't find color dark0";
             | Some(bg) -> 
             (match find_color light0 colors with
             | None -> print_endline "can't find color light0";
             | Some(c) -> let p = make_point x y in
             circle vid p bg c r w t;
-            )
+            ))
+    | Background ->
+            let (colors, vid) = v in
+            match find_color dark0 colors with
+            | None -> print_endline "can't fin color dark0";
+            | Some(c) -> paint_background vid c
 ;;

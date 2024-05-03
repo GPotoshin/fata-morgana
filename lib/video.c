@@ -13,10 +13,6 @@
 
 #include "video.h"
 
-const double Kr = 0.299;
-const double Kg = 0.587;
-const double Kb = 0.114;
-
 #define max(a, b) (a > b ? a : b)
 #define min(a, b) (a < b ? a : b)
 
@@ -38,7 +34,7 @@ u32 u32_of_int (int x) {
 
 void rgb2yuv (u8 c[3]) {
     u8vec3 t;
-    t.x = Kr*c[0] + Kg*c[1] + Kr*c[2];
+    t.x = 0.299*c[0] + 0.587*c[1] + 0.114*c[2];
     t.y = -0.168736*c[0] + -0.331264*c[1] + 0.5*c[2] + 128;
     t.z = 0.5*c[0] + -0.418688*c[1] + -0.081312*c[2] + 128;;
 
@@ -141,15 +137,6 @@ void add_frame (FMVideo *v) {
     }
 }
 
-// staying simple for now
-void set_pxl (FMVideo *v, u32 p[2], u8 c[3]) {
-    rgb2yuv (c);
-
-    v->frame->data[0][p[1] * v->frame->linesize[0] + p[0]] = c[0];
-    v->frame->data[1][p[1]/2 * v->frame->linesize[1] + p[0]/2] = c[1];
-    v->frame->data[2][p[1]/2 * v->frame->linesize[2] + p[0]/2] = c[2];
-}
-
 void encode (FMVideo *v) {
     int ret;
     v->frame->pts = v->counter;
@@ -198,9 +185,7 @@ void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t) {
     int *linesize = v->frame->linesize;
     int height = v->ctx->height;
     int width = v->ctx->width;
-    rgb2yuv(c);
-    rgb2yuv(bgc);
-
+    printf ("%x, %x, %x\n", c[0], c[1], c[2]);
 
     for (int i = 0; i < nframes; i++) {
         add_frame(v);
@@ -284,7 +269,7 @@ void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t) {
 
 void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len) {
     add_frame (v);
-    
+
     FT_Library lib;
     FT_Face face;
 
@@ -340,23 +325,37 @@ void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len) {
 
         int *linesize = v->frame->linesize;
         FT_Bitmap bitmap = face->glyph->bitmap;
-        printf ("w: %d, h: %d\n", bitmap.width, bitmap.rows);
-        printf ("[%d, %d, %d]\n", linesize[0], linesize[1], linesize[2]);
         for (int x = 0; x < bitmap.width; x++) {
             for (int y = 0; y < bitmap.rows; y++) {
-                float m = bitmap.buffer[y*bitmap.width + x]/225.;
+                float m = bitmap.buffer[y*bitmap.width + x]/255.;
+                int yr = c[0]*m + bg[0]*(1-m);
+                int ur = c[1]*m + bg[1]*(1-m);
+                int vr = c[2]*m + bg[2]*(1-m);
 
                 v->frame->data[0][(y+p[1]+pen_y-face->glyph->bitmap_top) *
-                    linesize[0] + (x+p[0]+pen_x+face->glyph->bitmap_left)] = c[0]*m + bg[0]*(1-m);
+                    linesize[0] + (x+p[0]+pen_x+face->glyph->bitmap_left)] = yr;
                 v->frame->data[1][(y+p[1]+pen_y-face->glyph->bitmap_top)/2 *
-                    linesize[1] + (x+p[0]+pen_x+face->glyph->bitmap_left)/2] = c[1]*m + bg[1]*(1-m);
+                    linesize[1] + (x+p[0]+pen_x+face->glyph->bitmap_left)/2] = ur;
                 v->frame->data[2][(y+p[1]+pen_y-face->glyph->bitmap_top)/2 *
-                    linesize[2] + (x+p[0]+pen_x+face->glyph->bitmap_left)/2] = c[2]*m + bg[2]*(1-m);
+                    linesize[2] + (x+p[0]+pen_x+face->glyph->bitmap_left)/2] = vr;
             }
         }
         pen_x += face->glyph->advance.x>>6;
         pen_y += face->glyph->advance.y>>6;
         old_index = glyph_index;
+    }
+    encode(v);
+}
+
+void paint_background (FMVideo *v, u8 bgc[3]) {
+    add_frame(v);
+    int *linesize = v->frame->linesize; 
+    for (int y = 0; y < v->ctx->height; y++) {
+        for (int x = 0; x < v->ctx->width; x++) {
+            v->frame->data[0][y * linesize[0] + x] = bgc[0];
+            v->frame->data[1][y/2 * linesize[1] + x/2] = bgc[1];
+            v->frame->data[2][y/2 * linesize[2] + x/2] = bgc[2];
+        }
     }
     encode(v);
 }

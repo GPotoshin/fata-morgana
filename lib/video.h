@@ -30,10 +30,10 @@ u32 u32_of_int (int x);
 void rgb2yuv (u8 c[3]);
 FMVideo *init (char *name, int width, int height);
 void add_frame (FMVideo *v);
-void set_pxl (FMVideo *v, u32 p[3], u8 c[2]);
 void encode (FMVideo *v);
 void write_and_close (FMVideo *v);
 
 void circle (FMVideo *v, u32 p[2], u8 bgc[3], u8 c[3], int r, int w, float t);
 void write_text (FMVideo *v, u32 p[2], u8 bg[3], u8 c[3], u32 str[], int len);
+void paint_background (FMVideo *v, u8 bgc[3]);
 #endif
