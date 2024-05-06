@@ -1,10 +1,10 @@
 # Fata-Morgana
 
-= How to build
+## How to build
 Framework depends on fmpeg and freetype2, so you need to have them installed.
 Build framework with command `make && dune build`
 
-= How to use
+## How to use
 Import framework
 ```ocaml
 module Fm = Fata_morgana
