@@ -31,4 +31,15 @@ Fm.do_action scene (Fm.Text ("Hello!", 0, 0));
 ```
 
 Colors are represented by their indicator functions that starts with names in
-lower case for example `dark0`
+lower case, for example `dark0`, `red` etc.
+
+### How to change colors
+Just add your color to the front of the list of colors. Scene for now is
+just a product type of list of colors and pointer to C structure. Colors are
+added with corresponding type constructor, `Dark0`, `Red` etc. Color should
+be in yuv format
+
+## How to write your animation
+Write a function in C in `video.c` file that takes visual parameters and which
+frame from animation is drawn. Then add type to `fmaction` in fmaction and
+add call of c function to function `do_action`.
