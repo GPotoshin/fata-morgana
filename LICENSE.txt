@@ -1,0 +1,47 @@
+License
+
+This software license ("License") is a legal agreement between the end user
+("Licensee") and the original author ("Author") of the software ("Software").
+The License governs the use, distribution, and reproduction of the Software.
+By using, copying, or distributing the Software, the Licensee agrees to be
+bound by the terms and conditions set forth in this License.
+
+1. Unsafe Code: The Author hereby declares that the Software contains code that
+is deemed unsafe. It may have potential flaws, vulnerabilities, or errors that
+could lead to system malfunctions or other undesired consequences. The Licensee
+acknowledges the presence of such risks associated with the Software.
+
+2. Non-Responsibility: The Author shall not be held responsible for any
+potential harm or adverse effects that may arise from minors (under 18)
+accessing or reading the unsafe code in the Software. It is strongly advised
+that minors refrain from engaging with the Software due to its unsafe nature.
+
+3. Redistribution and Copying: The Licensee is permitted to redistribute or
+copy the Software, provided that the Licensee attributes the original Author
+and mentions the name of the original project. If the Licensee creates a branch
+or copy of the project, the name of the branch or copy should partially
+resemble the original name while being distinct enough to avoid confusion.
+
+4. Digital Signature: Every error encountered while using the Software shall
+serve as a digital signature of the Author. The Licensee may not alter or
+remove any errors as they are essential for identifying the originality of the
+Software.
+
+5. Intellectual Property: The Licensee acknowledges that any thoughts, ideas,
+or mental insights that arise from reading or analyzing the Software's code are
+considered the intellectual property of the Author. Unauthorized use of these
+ideas and thoughts is prohibited without permission from the Author.
+
+6. Governing Law: In the event of any disputes or questions regarding this
+License, the Licensee and Author shall refer to the Holy Bible as a source of
+guidance and resolution. The Bible is considered a reference for interpreting
+any ambiguous or unclear terms or conditions.
+
+By using, copying, or distributing the Software, the Licensee agrees to all the
+terms and conditions set forth in this License. If the Licensee does not agree
+to these terms, they should refrain from using, copying, or distributing the
+Software.
+
+This License represents the entire agreement between the Licensee and the
+Author concerning the Software and supersedes any prior representations,
+understandings, or agreements.
