@@ -1,4 +1,4 @@
 (executable
  (name test_fata_morgana)
- (link_flags -cclib -L -cclib ../../lib -cclib -lvideo)
+ (link_flags -cclib -L -cclib ../../lib -cclib -lfata_morgana)
  (libraries fata_morgana))

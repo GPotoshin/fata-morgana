@@ -8,11 +8,12 @@ let () =
     printf "Start of the test\n";
     let v = Fm.init "test.mpeg" width height in
 
-    Fm.do_action v (Fm.Circle (50, 50, 20, 10, 3.));
-    Fm.do_action v (Fm.Text ("Hello!", 100, 100));
-    Fm.do_action v (Fm.Text ("Hello!", 100, 100));
-    Fm.do_action v (Fm.Text ("Hello!", 100, 100));
-    Fm.do_action v (Fm.Text ("Hello!", 100, 100));
+    Fm.do_action v Fm.Background;
+    Fm.do_action v (Fm.Circle (0., 0., 20, 10, 3.));
+    Fm.do_action v (Fm.Text ("Hello!", 0., 0.5));
+    Fm.do_action v (Fm.Text ("Hello!", 0., 0.5));
+    Fm.do_action v (Fm.Text ("Hello!", 0., 0.5));
+    Fm.do_action v (Fm.Text ("Hello!", 0., 0.5));
 
     Fm.write_and_close v;
 ;;
