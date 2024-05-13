@@ -19,12 +19,11 @@ int main () {
     float p[2] = {0, 0};
     u32 str[] = {'H', 'e', 'l', 'l', 'o', '?'};
 
-    for (int i = 0; i <= 100; i++) {
+    for (int i = 0; i < 30; i++) {
         add_frame(v);
         paint_background(v, bg);
-        circle(v, p, c, 100, 20, i, 100);
         float p2[2] = {-0.7, -0.7};
-        write_text(v, p2, c, str, 6, 2, 1);
+        write_text(v, p2, c, c, str, 6, 6*2, i);
         encode(v);
     }
 

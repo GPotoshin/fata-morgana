@@ -35,7 +35,7 @@ void write_and_close (FMVideo *v);
 
 void circle (FMVideo *v, float p[2], u8 c[3], int r, int w, float t,
         float duration);
-void write_text (FMVideo *v, float p[2], u8 c[3], u32 str[], int len, float t,
-        float t_per_letter);
+void write_text (FMVideo *v, float p[2], u8 c[3], u8 fgc[3], u32 str[], int len,
+        int frames, int frame);
 void paint_background (FMVideo *v, u8 bgc[3]);
 #endif
