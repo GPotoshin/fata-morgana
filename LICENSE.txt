@@ -13,8 +13,8 @@ acknowledges the presence of such risks associated with the Software.
 
 2. Non-Responsibility: The Author shall not be held responsible for any
 potential harm or adverse effects that may arise from minors (under 18)
-accessing or reading the unsafe code in the Software. It is strongly advised
-that minors refrain from engaging with the Software due to its unsafe nature.
+accessing or reading the Software's unsafe source code. It is strongly advised
+that minors refrain from engaging with the source code due to its unsafe nature.
 
 3. Redistribution and Copying: The Licensee is permitted to redistribute or
 copy the Software, provided that the Licensee attributes the original Author

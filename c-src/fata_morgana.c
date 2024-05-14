@@ -182,8 +182,6 @@ void circle (FMVideo *v, float pf[2], u8 c[3], int r, int w, float t, float dura
     int width = v->ctx->width;
 
     // drawing circle with Box filter
-    // strange warning when passing {0x8F, 0xBC, 0xBB} to c?
-    // do not see the reason it should clip
     u8 bgc[3];
     for (int x = max(p[0]-r-w, 0); x < min(width, p[0]+r+w); x++) {
         for (int y = max(p[1]-r-w, 0); y < min(height, p[1]+r+w); y++) {

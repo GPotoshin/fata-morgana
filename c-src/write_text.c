@@ -102,7 +102,7 @@ void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len,
         FT_Bitmap bitmap = face->glyph->bitmap;
         if (i < tick_number-4) {
             // showing letters
-            printf("drawn (i: %d, tn: %d)\n", i, tick_number);
+            // printf("drawn (i: %d, tn: %d)\n", i, tick_number);
             for (int x = 0; x < bitmap.width; x++) {
                 for (int y = 0; y < bitmap.rows; y++) {
                     float m = bitmap.buffer[y*bitmap.width + x]/255.;
@@ -132,7 +132,7 @@ void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len,
             }
         } else if (i > tick_number-4 && i <= tick_number) {
             // calculating borders
-            printf ("border appearence (i: %d, tn: %d)\n", i, tick_number);
+            // printf ("border appearence (i: %d, tn: %d)\n", i, tick_number);
             u8 *borders = malloc((bitmap.width+2)*(bitmap.rows+2));
             if (!borders) {
                 free(borders);
@@ -174,7 +174,7 @@ void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len,
             free(borders);
         } else if (i == tick_number-4) {
             // calculating borders
-            printf ("borders+shade in (i: %d, tn: %d)\n", i, tick_number);
+            // printf ("borders+shade in (i: %d, tn: %d)\n", i, tick_number);
             
             u8 *borders = malloc((bitmap.width+2)*(bitmap.rows+2));
             if (!borders) {
