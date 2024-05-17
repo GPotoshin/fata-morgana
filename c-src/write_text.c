@@ -43,8 +43,9 @@ void calculate_borders (u8 *out, FT_Bitmap in) {
     }
 }
 
-void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len, int frames, int frame) {
-    i32 p[2] = {(pf[0]+1.)*v->ctx->width/2., (1.-pf[0])*v->ctx->height/2.};
+void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len,
+        int frames, int frame, int size) {
+    i32 p[2] = {(pf[0]+1.)*v->ctx->width/2., (1.-pf[1])*v->ctx->height/2.};
     FT_Library lib;
     FT_Face face;
     int err = FT_Init_FreeType(&lib);
@@ -52,7 +53,7 @@ void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len,
         puts("... an error occurred during library initialization ...");
         return;
     }
-    err = FT_New_Face(lib, "/Users/giorno/Library/Fonts/Euler-Math.otf", 0, &face);    
+    err = FT_New_Face(lib, "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf", 0, &face);    
     if (err == FT_Err_Unknown_File_Format) {
         puts("... the font file could be opened and read, but it appears\n"
                 "... that its font format is unsupported");
@@ -61,7 +62,7 @@ void write_text (FMVideo *v, float pf[2], u8 c[3], u8 fg[3], u32 str[], int len,
         puts("font file could not be opened or read, or it is broken");
         return;
     }
-    err = FT_Set_Char_Size (face, 0, 16*64, 300, 300);
+    err = FT_Set_Char_Size (face, 0, 16*size, 300, 300);
     if (err) {
         puts("couldn't set char size");
         return;

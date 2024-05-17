@@ -37,18 +37,24 @@ module Color : sig
     val orange : fmcolor -> int option
     val deepBlue : fmcolor -> int option
     val lightBlue : fmcolor -> int option
+
+    val rgb_to_yuv : fmcolor -> fmcolor
 end
 
+type fontsize =
+| Small
+| Medium
+| Big
+
 type fmaction =
-    | Text of string*float*float*int*int
-    | Circle of float*float*int*int*float
-    | Background
+| Text of string*float*float*int*int*fontsize (*Unicode string * rel_x * rel_y * start * duration*)
+| Circle of float*float*int*int*float
+| Background
 
 val init : string -> int -> int -> (Color.fmcolor list) * fmvideo
 val write_and_close : (Color.fmcolor list) * fmvideo -> unit
 
-val addText : string -> float -> float -> int -> int -> fmaction list -> fmaction list
+val addText : string -> float -> float -> int -> int -> fontsize -> fmaction list -> fmaction list
 val addBackground : fmaction list -> fmaction list
 
-val do_action : (Color.fmcolor list) * fmvideo -> fmaction -> int -> unit
 val visualise_scene : Color.fmcolor list * fmvideo -> fmaction list -> float -> unit

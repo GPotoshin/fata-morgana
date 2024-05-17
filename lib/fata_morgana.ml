@@ -22,11 +22,9 @@ let write_and_close v =
 let circle =
     foreign "circle" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
     @-> int @-> int @-> float @-> (returning void))
-(*void write_text (FMVideo *v, float p[2], u8 c[3], u8 fgc[3], u32 str[], int len,
-        int frames, int frame);*)
 let write_text =
     foreign "write_text" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
-    @-> ptr int @-> int @-> int @-> int @-> (returning void))
+    @-> ptr int @-> int @-> int @-> int @-> int @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let make_color r g b =
@@ -202,24 +200,32 @@ let init name w h =
 (* frame rate is here because I want to do calculations here, maybe I'll regret 
  one day, but I want to master ocaml and not c that I already know well*)
 
+type fontsize =
+| Small
+| Medium
+| Big
+
 type fmaction =
-| Text of string*float*float*int*int (*Unicode string * rel_x * rel_y * start * duration*)
+| Text of string*float*float*int*int*fontsize (*Unicode string * rel_x * rel_y * start * duration*)
 | Circle of float*float*int*int*float
 | Background
 
 let (<~) f g = g (f)
 
-let addText s x y start dur = (fun scene -> scene @ [Text (s, x, y, start, dur)])
+let addText s x y start dur size = (fun scene -> scene @ [Text (s, x, y, start, dur, size)])
 let addBackground = fun scene -> scene @ [Background]
 
 let do_action v acc counter =
     let open Color in
     match acc with
-    | Text (str, x, y, _, _) ->
-            print_endline "writing text";
+    | Text (str, x, y, _, _, size) ->
+            let size_num = match size with
+            | Small -> 12
+            | Medium -> 32
+            | Big -> 64 in
             if x > 1. || x < -.1. then
                 print_endline "x is out of [-1, 1]"
-            else if y > 1. || x < -.1. then
+            else if y > 1. || y < -.1. then
                 print_endline "y is out of [-1, 1]"
             else
             let seq = String.to_seq str in
@@ -233,10 +239,10 @@ let do_action v acc counter =
             | None -> print_endline "can't find color light0";
             | Some(fgc) ->
             write_text vid p c fgc (CArray.start ascii_carray) (String.length str)
-            (2*(String.length str)) counter;
+            (2*(String.length str)) counter size_num;
             ))
+
     | Circle (x, y, r, w, t) -> 
-            print_endline "drawing circle";
             if x > 1. || x < -.1. then
                 print_endline "x is out of [-1, 1]"
             else if y > 1. || x < -.1. then
@@ -251,8 +257,8 @@ let do_action v acc counter =
             | Some(c) -> let p = make_point x y in
             circle vid p bg c r w t;
             ))
+
     | Background ->
-            print_endline "filling background";
             let (colors, vid) = v in
             match find_color dark0 colors with
             | None -> print_endline "can't fin color dark0";
