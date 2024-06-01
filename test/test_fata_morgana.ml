@@ -11,7 +11,7 @@ let () =
 
     let sq = []
     <~ Fm.addBackground
-    <~ Fm.addText problem (-0.9) (0.9) 0 0 Medium in
+    <~ Fm.addText problem (-0.9) (0.7) 0.9 (-0.7) Medium in
 
     Fm.visualise_scene v sq 3.;
     Fm.write_and_close v;

@@ -4,8 +4,6 @@ open Foreign
 type fmvideo = unit ptr
 let fmvideo : fmvideo typ = ptr void
 
-let u8_of_int =
-    foreign "u8_of_int" (int @-> (returning uint8_t))
 let init_video =
     foreign "init" (string @-> int @-> int @-> (returning fmvideo))
 let cwrite_and_close =
@@ -29,7 +27,7 @@ let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let make_color r g b =
     (CArray.start(CArray.of_list uint8_t
-    [(u8_of_int r);(u8_of_int g);(u8_of_int b)]))
+    [(Unsigned.UInt8.of_int r);(Unsigned.UInt8.of_int g);(Unsigned.UInt8.of_int b)]))
 ;;
 let make_point x y =
     (CArray.start(CArray.of_list float [x; y]))
@@ -206,13 +204,13 @@ type fontsize =
 | Big
 
 type fmaction =
-| Text of string*float*float*int*int*fontsize (*Unicode string * rel_x * rel_y * start * duration*)
+| Text of string*float*float*float*float*fontsize (*Unicode string * rel_x * rel_y * end_x * end_y * duration*)
 | Circle of float*float*int*int*float
 | Background
 
 let (<~) f g = g (f)
 
-let addText s x y start dur size = (fun scene -> scene @ [Text (s, x, y, start, dur, size)])
+let addText s x y end_x end_y size = (fun scene -> scene @ [Text (s, x, y, end_x, end_y, size)])
 let addBackground = fun scene -> scene @ [Background]
 
 let do_action v acc counter =
