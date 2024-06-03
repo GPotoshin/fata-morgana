@@ -403,7 +403,7 @@ fn calculate_borders (out: []u8, in: c.FT_Bitmap) void {
 }
 
 export fn write_text (v: *FMVideo, pf: [*c]f32, cg: [*c]u8, fg: [*c]u8, str:
-    [*c]u32, len: i32, frames: i32, frame: i32, size: i32) void {
+    [*c]u32, len: i32, frames: i32, frame: i32, size: i32, [*c] font_name) void {
     const width_f: f32 = @floatFromInt(v.ctx.width);
     const height_f: f32 = @floatFromInt(v.ctx.height);
     const allocator = v.arena.allocator();
@@ -426,7 +426,7 @@ export fn write_text (v: *FMVideo, pf: [*c]f32, cg: [*c]u8, fg: [*c]u8, str:
         return;
     }
     const test_font = "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf";
-    err = c.FT_New_Face(lib, test_font, 0, &face); 
+    err = c.FT_New_Face(lib, font_name, 0, &face); 
     if (err == c.FT_Err_Unknown_File_Format) {
         print (\\... the font file could be opened and read, but it appears
                \\... that its font format is unsupported
@@ -673,7 +673,26 @@ export fn write_text (v: *FMVideo, pf: [*c]f32, cg: [*c]u8, fg: [*c]u8, str:
 }
 
 
+export fn 
+splitTextInLines (x_t: i32, y_l: i32, x_b: i32, y_r: i32, s: [*c]i32, len: i32) [*c]i32 {
+    var i: i32 = 0;
+    while (i < len) : (i+=1) {
+        const glyph_index = c.FT_Get_Char_Index(face, str[i]);
+        err = c.FT_Load_Glyph(face, glyph_index, c.FT_LOAD_DEFAULT);
+        if (err != 0) {
+            print ("couldn;t load a glyph\n", .{});
+            return;
+        }
 
-
-
+        if (i > 0) {
+            var kerning: c.FT_Vector = undefined;
+            err = c.FT_Get_Kerning(face, old_index, glyph_index, c.FT_KERNING_DEFAULT, &kerning);
+            if (err != 0) {
+                print ("error in defining kerning\n", .{});
+                return;
+            }
+            pen_x += @truncate(kerning.x >> 6);
+        }
+    }
+}
 

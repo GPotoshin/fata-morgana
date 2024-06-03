@@ -1,4 +1,5 @@
 (library
  (name fata_morgana)
+ (public_name fata_morgana)
  (modules fata_morgana)
  (libraries ctypes-foreign))

@@ -2,7 +2,7 @@
 
 ## How to build
 Framework depends on fmpeg and freetype2, so you need to have them installed.
-Build framework with command `make && dune build`
+Build framework with command `make`
 
 ## How to use
 Import framework
@@ -33,7 +33,7 @@ You can create a sequence of actions with `<~` operator
 ```ocaml
     let sq = []
     <~ Fm.addBackground
-    <~ Fm.addText problem (-0.9) (0.9) 0 0 Medium in
+    <~ Fm.addText problem (-0.9) (0.9) 0. 0. Medium in
 ```
 
 and then pass it to another procedure, that takes scene, action list and time
@@ -56,9 +56,9 @@ added with corresponding type constructor, `Dark0`, `Red` etc. Color should
 be in yuv format. There is `Color.rgb_to_yuv` to help you with convertion.
 
 ## How to write your animation
-Write a function in C in `video.c` file that takes visual parameters and which
-frame from animation is drawn. Then add type to `fmaction` in fmaction and
-add call of c function to function `do_action`.
+Write a function in ZIG in `src/fata_morgana.zig` file that takes visual
+parameters and which frame from animation is drawn. Then add type to `fmaction`
+in fmaction and add call of c function to function `do_action`.
 
 # To do list
 - make a better coloring

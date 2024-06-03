@@ -47,14 +47,17 @@ type fontsize =
 | Big
 
 type fmaction =
-| Text of string*float*float*int*int*fontsize (*Unicode string * rel_x * rel_y * start * duration*)
+| Text of string*float*float*float*float*fontsize (*Unicode string * rel_x * rel_y * start * duration*)
 | Circle of float*float*int*int*float
 | Background
 
-val init : string -> int -> int -> (Color.fmcolor list) * fmvideo
+type fmbox = float * float * float * float
+val middleBox : fmbox
+
+val init : string -> int -> int -> (Color.fmcolor list * fmvideo) option
 val write_and_close : (Color.fmcolor list) * fmvideo -> unit
 
-val addText : string -> float -> float -> int -> int -> fontsize -> fmaction list -> fmaction list
+val addText : string -> float -> float -> float -> float-> fontsize -> fmaction list -> fmaction list
 val addBackground : fmaction list -> fmaction list
 
 val visualise_scene : Color.fmcolor list * fmvideo -> fmaction list -> float -> unit

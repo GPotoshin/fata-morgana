@@ -1,28 +1,21 @@
+.PHONY: rpath
+
 CFLAGS += -O2 -g -I/opt/homebrew/include -I/opt/homebrew/include/freetype2
 LFLAGS += -L$(CURDIR)/lib $(shell pkg-config --libs libavcodec freetype2) -fPIC
 
 OBJECTS := bin/fata_morgana.o bin/fmmath.o bin/write_text.o
 
-lib/libfata_morgana.so: $(OBJECTS) bin
-	cc $(CFLAGS) $(LFLAGS) -shared -o $@ $(OBJECTS)
+all: zig-out/lib/libfata_morgana.dylib _build/default/test/test_fata_morgana.exe
 
-bin/test: c-src/test.c bin
-	cc $(CFLAGS) -lfata_morgana -L$(CURDIR)/lib -o bin/test $<
+_build/default/test/test_fata_morgana.exe: test/test_fata_morgana.ml lib/fata_morgana.ml lib/fata_morgana.mli
+	dune build
+	install_name_tool -add_rpath $(CURDIR)/zig-out/lib $@
 
-bin/fmmath.o: c-src/fmmath.c bin
-	cc $(CFLAGS) -g -c -o $@ $<
-
-bin/write_text.o: c-src/write_text.c bin
-	cc $(CFLAGS) -g -c -o $@ $<
-
-bin/fata_morgana.o: c-src/fata_morgana.c bin
-	cc $(CFLAGS) -g -c -o $@ $<
-
-izl:
-	cp zig-out/lib/libfata_morgana.dylib lib/libfata_morgana.so
+zig-out/lib/libfata_morgan.dylib: srs/fata_morgana.zig
+	cp zig-out/lib/libfata_morgana.dylib lib/libfata_morgana.dylib
 
 bin:
 	mkdir -p bin
 
 run:
-	bin/test test.mpeg mpeg1video
+	_build/default/test/test_fata_morgana.exe

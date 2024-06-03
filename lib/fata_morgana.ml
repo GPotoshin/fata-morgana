@@ -5,7 +5,7 @@ type fmvideo = unit ptr
 let fmvideo : fmvideo typ = ptr void
 
 let init_video =
-    foreign "init" (string @-> int @-> int @-> (returning fmvideo))
+    foreign "init" (string @-> int @-> int @-> (ptr int) @-> (returning fmvideo))
 let cwrite_and_close =
     foreign "write_and_close" (fmvideo @-> (returning void))
 let add_frame =
@@ -22,7 +22,7 @@ let circle =
     @-> int @-> int @-> float @-> (returning void))
 let write_text =
     foreign "write_text" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
-    @-> ptr int @-> int @-> int @-> int @-> int @-> (returning void))
+    @-> ptr int @-> int @-> int @-> int @-> int @-> string @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let make_color r g b =
@@ -173,6 +173,7 @@ module Color = struct
 end
 
 let init name w h =
+    let e = allocate int 0 in
     let open Color in
     let colorset = [
         Dark0 0x2e3440;
@@ -192,7 +193,11 @@ let init name w h =
         DeepBlue 0x5e81ac;
         LightBlue 0x88c0d0;
     ] in
-    (List.map rgb_to_yuv colorset, init_video name w h)
+    let v = init_video name w h e in
+    let retval = (List.map rgb_to_yuv colorset, v) in
+    match !@e with
+    | 0 -> Some(retval)
+    | _ -> None
 ;;
 
 (* frame rate is here because I want to do calculations here, maybe I'll regret 
@@ -210,7 +215,11 @@ type fmaction =
 
 let (<~) f g = g (f)
 
-let addText s x y end_x end_y size = (fun scene -> scene @ [Text (s, x, y, end_x, end_y, size)])
+type fmbox = float * float * float * float
+let middleBox: fmbox = (-0.8, 0.66, 0.8, -0.66)
+
+let addText s x y end_x end_y size = (fun scene ->
+    scene @ [Text (s, x, y, end_x, end_y, size)])
 let addBackground = fun scene -> scene @ [Background]
 
 let do_action v acc counter =
@@ -236,8 +245,9 @@ let do_action v acc counter =
             (match find_color light0 colors with
             | None -> print_endline "can't find color light0";
             | Some(fgc) ->
+            let font_name = "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf" in
             write_text vid p c fgc (CArray.start ascii_carray) (String.length str)
-            (2*(String.length str)) counter size_num;
+            (2*(String.length str)) counter size_num font_name;
             ))
 
     | Circle (x, y, r, w, t) -> 
