@@ -2,7 +2,7 @@
 
 ## How to build
 Framework depends on fmpeg and freetype2, so you need to have them installed.
-Build framework with command `make`
+Build framework with command `make`. To run test run `make run`.
 
 ## How to use
 Import framework
@@ -18,13 +18,15 @@ Only mpeg1video format is supported for now
 
 In module Fata-morgana there is a type
 ```ocaml
+type fmbox = float * float * float * float
+
 type fontsize =
 | Small
 | Medium
 | Big
 
 type fmaction =
-| Text of string*float*float*int*int*fontsize (*Unicode string * rel_x * rel_y * start * duration*)
+| Text of string*fmbox*fontsize
 | Circle of float*float*int*int*float
 | Background
 ```
@@ -33,7 +35,7 @@ You can create a sequence of actions with `<~` operator
 ```ocaml
     let sq = []
     <~ Fm.addBackground
-    <~ Fm.addText problem (-0.9) (0.9) 0. 0. Medium in
+    <~ Fm.addText problem middleBox Medium in
 ```
 
 and then pass it to another procedure, that takes scene, action list and time
@@ -56,12 +58,12 @@ added with corresponding type constructor, `Dark0`, `Red` etc. Color should
 be in yuv format. There is `Color.rgb_to_yuv` to help you with convertion.
 
 ## How to write your animation
-Write a function in ZIG in `src/fata_morgana.zig` file that takes visual
-parameters and which frame from animation is drawn. Then add type to `fmaction`
-in fmaction and add call of c function to function `do_action`.
+Write a function in ZIG in that takes visual parameters and which frame from
+animation is drawn. Then add type to `fmaction` in fmaction and add call of c
+function to function `do_action`.
 
 # To do list
 - make a better coloring
-- make text boxes
 - make borders
 - write latex parser
+- make generalised transformation's animation
