@@ -66,11 +66,12 @@ fn calculate_borders (out: []u8, in: c.FT_Bitmap) void {
     }
 }
 
-export fn write_text (v: *FMVideo, pf: [*c]f32, cg: [*c]u8, fg: [*c]u8, str:
+export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, str:
     [*c]u32, len: i32, frames: i32, frame: i32, size: i32, font_name: [*c]u8,
-    x_l: f32, x_r: f32) void {
+    x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
     const width_f: f32 = @floatFromInt(v.ctx.width);
     const height_f: f32 = @floatFromInt(v.ctx.height);
+    const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
     const allocator = v.arena.allocator();
     
     var line_counter: u32 = 0;
@@ -81,8 +82,8 @@ export fn write_text (v: *FMVideo, pf: [*c]f32, cg: [*c]u8, fg: [*c]u8, str:
         };
 
     const p = [2]i32{
-        @intFromFloat((pf[0]+1.0)*width_f/2.0),
-        @intFromFloat((1.0-pf[1])*height_f/2.0),
+        @intFromFloat((x_l+1.0)*width_f/2.0),
+        @intFromFloat((1.0-y_t)*height_f/2.0),
     };
     const cgf = [3]f32{
         @floatFromInt(@as(i32, cg[0])),
@@ -121,6 +122,9 @@ export fn write_text (v: *FMVideo, pf: [*c]f32, cg: [*c]u8, fg: [*c]u8, str:
     var nlflag = true;
 
     for (0..@bitCast(@as(i64, maths.min(len, tick_number)))) |i| {
+        if (pen_y >= bottom_limit) {
+            break;
+        }
         if (i == newlines[line_counter]) {
             pen_x = 0;
             pen_y += @truncate(face.*.size.*.metrics.height >> 6);

@@ -21,9 +21,9 @@ let circle =
     foreign "circle" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
     @-> int @-> int @-> float @-> (returning void))
 let write_text =
-    foreign "write_text" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
-    @-> ptr int @-> int @-> int @-> int @-> int @-> string @-> float @-> float @->
-    (returning void))
+    foreign "write_text" (fmvideo @-> ptr uint8_t @-> ptr uint8_t @-> ptr int 
+    @-> int @-> int @-> int @-> int @-> string @-> float @-> float @-> float
+    @-> float @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let make_color r g b =
@@ -209,32 +209,37 @@ type fontsize =
 | Medium
 | Big
 
+type fmbox = float * float * float * float
+let middleBox: fmbox = (-0.8, 0.8, -0.66, 0.66)
+
 type fmaction =
-| Text of string*float*float*float*float*fontsize (*Unicode string * rel_x * rel_y * end_x * end_y * duration*)
+| Text of string*fmbox*fontsize
 | Circle of float*float*int*int*float
 | Background
 
 let (<~) f g = g (f)
 
-type fmbox = float * float * float * float
-let middleBox: fmbox = (-0.8, 0.66, 0.8, -0.66)
-
-let addText s x y end_x end_y size = (fun scene ->
-    scene @ [Text (s, x, y, end_x, end_y, size)])
+let addText s box size = (fun scene ->
+    scene @ [Text (s, box, size)])
 let addBackground = fun scene -> scene @ [Background]
 
 let do_action v acc counter =
     let open Color in
     match acc with
-    | Text (str, x, y, _, _, size) ->
+    | Text (str, box, size) ->
+            let (x_l, x_r, y_l, y_t) = box in 
             let size_num = match size with
             | Small -> 12
             | Medium -> 32
             | Big -> 64 in
-            if x > 1. || x < -.1. then
-                print_endline "x is out of [-1, 1]"
-            else if y > 1. || y < -.1. then
-                print_endline "y is out of [-1, 1]"
+            if x_l > 1. || x_l < -.1. then
+                print_endline "x_l is out of [-1, 1]"
+            else if x_r > 1. || x_r < -.1. then
+                print_endline "x_r is out of [-1, 1]"
+            else if y_l > 1. || y_l < -.1. then
+                print_endline "y_l is out of [-1, 1]"
+            else if y_t > 1. || y_t < -.1. then
+                print_endline "y_t is out of [-1, 1]"
             else
             let seq = String.to_seq str in
             let ascii_list = List.of_seq (Seq.map Char.code seq) in
@@ -242,13 +247,13 @@ let do_action v acc counter =
             let (colors, vid) = v in
             (match find_color orange colors with
             | None -> print_endline "can't find color light0";
-            | Some(c) -> let p = make_point x y in
+            | Some(c) ->
             (match find_color light0 colors with
             | None -> print_endline "can't find color light0";
             | Some(fgc) ->
             let font_name = "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf" in
-            write_text vid p c fgc (CArray.start ascii_carray) (String.length str)
-            (2*(String.length str)) counter size_num font_name (-0.3) 0.3;
+            write_text vid c fgc (CArray.start ascii_carray) (String.length str)
+            (2*(String.length str)) counter size_num font_name x_l x_r y_l y_t;
             ))
 
     | Circle (x, y, r, w, t) -> 
