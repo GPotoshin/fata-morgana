@@ -22,7 +22,8 @@ let circle =
     @-> int @-> int @-> float @-> (returning void))
 let write_text =
     foreign "write_text" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
-    @-> ptr int @-> int @-> int @-> int @-> int @-> string @-> (returning void))
+    @-> ptr int @-> int @-> int @-> int @-> int @-> string @-> float @-> float @->
+    (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let make_color r g b =
@@ -247,7 +248,7 @@ let do_action v acc counter =
             | Some(fgc) ->
             let font_name = "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf" in
             write_text vid p c fgc (CArray.start ascii_carray) (String.length str)
-            (2*(String.length str)) counter size_num font_name;
+            (2*(String.length str)) counter size_num font_name (-0.3) 0.3;
             ))
 
     | Circle (x, y, r, w, t) -> 
@@ -275,7 +276,6 @@ let do_action v acc counter =
 
 let visualise_scene scene action_list time =
     let duration = int_of_float (time*.25.) in
-    Printf.printf "stats: list length %d\n" (List.length action_list);
     let rec process_actions list counter endc is_root =
         if counter >= endc then
             ()

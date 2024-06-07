@@ -10,12 +10,13 @@ let () =
     | Some(x) -> x
     | None -> exit 1
     in
-    let problem = "Show" in
+    let problem = "Hello world this is a very long text so it should pass to the second line,
+    if not I'll make it longer" in
 
     let sq = []
     <~ Fm.addBackground
     <~ Fm.addText problem (-0.9) (0.7) 0. 0. Medium in
 
-    Fm.visualise_scene v sq 3.;
+    Fm.visualise_scene v sq 10.;
     Fm.write_and_close v;
 ;;

@@ -11,10 +11,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    lib.addIncludePath(.{ .path = "/opt/homebrew/include/freetype2"});
     lib.addIncludePath(.{ .path = "/opt/homebrew/include"});
+    lib.addIncludePath(.{ .path = "/opt/homebrew/include/freetype2"});
     lib.addLibraryPath(.{ .path = "/opt/homebrew/lib"});
-    lib.linkSystemLibrary("avcodec");
     lib.linkSystemLibrary("freetype");
+    lib.linkSystemLibrary("libavcodec");
+
     b.installArtifact(lib);
 }
