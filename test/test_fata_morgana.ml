@@ -2,8 +2,8 @@ module Fm = Fata_morgana
 
 let (<~) = Fm.(<~)
 
-let height = 480/2
-let width = 720/2
+let height = 480
+let width = 720
 
 let () =
     let v = match Fm.init "test.mpeg" width height with
@@ -15,7 +15,7 @@ let () =
 
     let sq = []
     <~ Fm.addBackground
-    <~ Fm.addText problem Fm.middleBox Fm.Medium in
+    <~ Fm.addText problem Fm.middleBox Fm.Big in
 
     Fm.visualise_scene v sq 10.;
     Fm.write_and_close v;

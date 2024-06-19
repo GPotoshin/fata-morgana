@@ -2,6 +2,7 @@
 
 ## How to build
 Framework depends on fmpeg and freetype2, so you need to have them installed.
+For ocaml part you need to install ctypes and ctypes-foreign
 Build framework with command `make`. To run test run `make run`.
 
 ## How to use
@@ -63,7 +64,8 @@ animation is drawn. Then add type to `fmaction` in fmaction and add call of c
 function to function `do_action`.
 
 # To do list
-- make a better coloring
-- make borders
-- write latex parser
+- add support to a better format
 - make generalised transformation's animation
+- make a better coloring
+- write latex parser
+- add shaders

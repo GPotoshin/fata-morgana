@@ -1,0 +1,11 @@
+# zig
+.zig-cache
+zig-cache
+zig-out
+
+# ocmal
+_build
+
+# projects
+bin
+include

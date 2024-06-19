@@ -21,9 +21,9 @@ let circle =
     foreign "circle" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
     @-> int @-> int @-> float @-> (returning void))
 let write_text =
-    foreign "write_text" (fmvideo @-> ptr uint8_t @-> ptr uint8_t @-> ptr int 
-    @-> int @-> int @-> int @-> int @-> string @-> float @-> float @-> float
-    @-> float @-> (returning void))
+    foreign "write_text" (fmvideo @-> ptr uint8_t @-> ptr uint8_t @-> ptr uint8_t
+    @-> ptr int @-> int @-> int @-> int @-> int @-> ptr char @-> float @-> float
+    @-> float @-> float @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let make_color r g b =
@@ -246,15 +246,20 @@ let do_action v acc counter =
             let ascii_carray = CArray.of_list int ascii_list in
             let (colors, vid) = v in
             (match find_color orange colors with
-            | None -> print_endline "can't find color light0";
+            | None -> print_endline "can't find color orange";
             | Some(c) ->
             (match find_color light0 colors with
             | None -> print_endline "can't find color light0";
             | Some(fgc) ->
+            (match find_color dark0 colors with
+            | None -> print_endline "can't find color dark0";
+            | Some(bgc) ->
             let font_name = "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf" in
-            write_text vid c fgc (CArray.start ascii_carray) (String.length str)
-            (2*(String.length str)) counter size_num font_name x_l x_r y_l y_t;
-            ))
+            let cfont_name = CArray.of_string font_name in
+            write_text vid c fgc bgc (CArray.start ascii_carray) (String.length str)
+            (2*(String.length str)) counter size_num (CArray.start cfont_name)
+            x_l x_r y_l y_t;
+            )))
 
     | Circle (x, y, r, w, t) -> 
             if x > 1. || x < -.1. then

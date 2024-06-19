@@ -66,9 +66,10 @@ fn calculate_borders (out: []u8, in: c.FT_Bitmap) void {
     }
 }
 
-export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, str:
+export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
     [*c]u32, len: i32, frames: i32, frame: i32, size: i32, font_name: [*c]u8,
     x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
+
     const width_f: f32 = @floatFromInt(v.ctx.width);
     const height_f: f32 = @floatFromInt(v.ctx.height);
     const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
@@ -195,14 +196,14 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, str:
                         @as(u32, @bitCast(pos_2)),
                     };
 
-                    const bg = [3]f32{
-                        @floatFromInt(@as(i32, v.frame.data[0][pos[0]])),
-                        @floatFromInt(@as(i32, v.frame.data[1][pos[1]])),
-                        @floatFromInt(@as(i32, v.frame.data[2][pos[2]])),
+                    const bgf = [3]f32{
+                        @floatFromInt(@as(i32, bg[0])),
+                        @floatFromInt(@as(i32, bg[1])),
+                        @floatFromInt(@as(i32, bg[2])),
                     };
-                    const yr: i32 = @intFromFloat(cgf[0]*m + bg[0]*(1.0-m));
-                    const ur: i32 = @intFromFloat(cgf[1]*m + bg[1]*(1.0-m));
-                    const vr: i32 = @intFromFloat(cgf[2]*m + bg[2]*(1.0-m));
+                    const yr: i32 = @intFromFloat(cgf[0]*m + bgf[0]*(1.0-m));
+                    const ur: i32 = @intFromFloat(cgf[1]*m + bgf[1]*(1.0-m));
+                    const vr: i32 = @intFromFloat(cgf[2]*m + bgf[2]*(1.0-m));
                     v.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
                     if ((x&1)==0 and (y&1) == 0) {
                         v.frame.data[1][pos[1]] = @truncate(@as(u32, @bitCast(ur)));
@@ -252,14 +253,19 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, str:
                         @as(u32, @bitCast(pos_2)),
                     };
 
-                    const bg = [3]f32{
-                        @floatFromInt(@as(i32, v.frame.data[0][pos[0]])),
-                        @floatFromInt(@as(i32, v.frame.data[1][pos[1]])),
-                        @floatFromInt(@as(i32, v.frame.data[2][pos[2]])),
+                    const bgf = [3]f32{
+                        @floatFromInt(@as(i32, bg[0])),
+                        @floatFromInt(@as(i32, bg[1])),
+                        @floatFromInt(@as(i32, bg[2])),
                     };
-                    const yr: i32 = @intFromFloat(cgf[0]*m + bg[0]*(1.0-m));
-                    const ur: i32 = @intFromFloat(cgf[1]*m + bg[1]*(1.0-m));
-                    const vr: i32 = @intFromFloat(cgf[2]*m + bg[2]*(1.0-m));
+                    const fgf = [3]f32{
+                        @floatFromInt(@as(i32, fg[0])),
+                        @floatFromInt(@as(i32, fg[1])),
+                        @floatFromInt(@as(i32, fg[2])),
+                    };
+                    const yr: i32 = @intFromFloat(fgf[0]*m + bgf[0]*(1.0-m));
+                    const ur: i32 = @intFromFloat(fgf[1]*m + bgf[1]*(1.0-m));
+                    const vr: i32 = @intFromFloat(fgf[2]*m + bgf[2]*(1.0-m));
                     
                     const xf: f32 = @floatFromInt(@as(i32, @bitCast(@as(u32, 
                         @truncate(x)))));
@@ -327,10 +333,10 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, str:
                         @as(u32, @bitCast(pos_2)),
                     };
 
-                    const bg = [3]f32{
-                        @floatFromInt(@as(i32, v.frame.data[0][pos[0]])),
-                        @floatFromInt(@as(i32, v.frame.data[1][pos[1]])),
-                        @floatFromInt(@as(i32, v.frame.data[2][pos[2]])),
+                    const bgf = [3]f32{
+                        @floatFromInt(@as(i32, bg[0])),
+                        @floatFromInt(@as(i32, bg[1])),
+                        @floatFromInt(@as(i32, bg[2])),
                     };
                     const fgf = [3]f32{
                         @floatFromInt(@as(i32, fg[0])),
@@ -338,11 +344,11 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, str:
                         @floatFromInt(@as(i32, fg[2])),
                     };
                     const yr: i32 = @intFromFloat(cgf[0]*filling_coef +
-                        fgf[0]*border_coef + bg[0]*bg_coef);
+                        fgf[0]*border_coef + bgf[0]*bg_coef);
                     const ur: i32 = @intFromFloat(cgf[1]*filling_coef +
-                        fgf[1]*border_coef + bg[1]*bg_coef);
+                        fgf[1]*border_coef + bgf[1]*bg_coef);
                     const vr: i32 = @intFromFloat(cgf[2]*filling_coef +
-                        fgf[2]*border_coef + bg[2]*bg_coef);
+                        fgf[2]*border_coef + bgf[2]*bg_coef);
 
                     v.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
                     if ((x&1)==0 and (y&1) == 0) {
