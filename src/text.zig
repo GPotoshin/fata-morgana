@@ -34,18 +34,30 @@ fn calculate_borders (out: []u8, in: c.FT_Bitmap) void {
             const y_i: i32 = @bitCast(@as(u32, @truncate(y)));
             var m1: f32 = 0.0;
             var m2: f32 = 0.0;
-            m1 += @as(f32, @floatFromInt(read_with_borders   (x_i-2, y_i-2, in.width, in.rows, in.buffer)));
-            m1 += 2.0*@as(f32, @floatFromInt(read_with_borders (x_i-1, y_i-2, in.width, in.rows, in.buffer)));
-            m1 += @as(f32, @floatFromInt(read_with_borders   (x_i,   y_i-2, in.width, in.rows, in.buffer)));
-            m1 -= @as(f32, @floatFromInt(read_with_borders   (x_i-2, y_i, in.width, in.rows, in.buffer)));
-            m1 -= 2.0*@as(f32, @floatFromInt(read_with_borders (x_i-1, y_i, in.width, in.rows, in.buffer)));
-            m1 -= @as(f32, @floatFromInt(read_with_borders   (x_i,   y_i, in.width, in.rows, in.buffer)));
-            m2 += @as(f32, @floatFromInt(read_with_borders   (x_i-2, y_i-2, in.width, in.rows, in.buffer)));
-            m2 += 2.0*@as(f32, @floatFromInt(read_with_borders (x_i-2, y_i-1, in.width, in.rows, in.buffer)));
-            m2 += @as(f32, @floatFromInt(read_with_borders   (x_i-2, y_i,   in.width, in.rows, in.buffer)));
-            m2 -= @as(f32, @floatFromInt(read_with_borders   (x_i, y_i-2, in.width, in.rows, in.buffer)));
-            m2 -= 2.0*@as(f32, @floatFromInt(read_with_borders (x_i, y_i-1, in.width, in.rows, in.buffer)));
-            m2 -= @as(f32, @floatFromInt(read_with_borders   (x_i, y_i,   in.width, in.rows, in.buffer)));
+            m1 += @as(f32, @floatFromInt(read_with_borders
+                    (x_i-2, y_i-2, in.width, in.rows, in.buffer)));
+            m1 += 2.0*@as(f32, @floatFromInt(read_with_borders
+                    (x_i-1, y_i-2, in.width, in.rows, in.buffer)));
+            m1 += @as(f32, @floatFromInt(read_with_borders
+                    (x_i,   y_i-2, in.width, in.rows, in.buffer)));
+            m1 -= @as(f32, @floatFromInt(read_with_borders
+                    (x_i-2, y_i, in.width, in.rows, in.buffer)));
+            m1 -= 2.0*@as(f32, @floatFromInt(read_with_borders
+                    (x_i-1, y_i, in.width, in.rows, in.buffer)));
+            m1 -= @as(f32, @floatFromInt(read_with_borders
+                    (x_i,   y_i, in.width, in.rows, in.buffer)));
+            m2 += @as(f32, @floatFromInt(read_with_borders
+                    (x_i-2, y_i-2, in.width, in.rows, in.buffer)));
+            m2 += 2.0*@as(f32, @floatFromInt(read_with_borders
+                    (x_i-2, y_i-1, in.width, in.rows, in.buffer)));
+            m2 += @as(f32, @floatFromInt(read_with_borders
+                    (x_i-2, y_i,   in.width, in.rows, in.buffer)));
+            m2 -= @as(f32, @floatFromInt(read_with_borders
+                    (x_i, y_i-2, in.width, in.rows, in.buffer)));
+            m2 -= 2.0*@as(f32, @floatFromInt(read_with_borders
+                    (x_i, y_i-1, in.width, in.rows, in.buffer)));
+            m2 -= @as(f32, @floatFromInt(read_with_borders
+                    (x_i, y_i,   in.width, in.rows, in.buffer)));
 
             const fval: f32 = std.math.hypot(m1/8.0, m2/8.0)/1.4142136;
             const ival: i32 = @intFromFloat(fval);
@@ -61,7 +73,8 @@ fn calculate_borders (out: []u8, in: c.FT_Bitmap) void {
             const Mf: f32 = @floatFromInt(M);
             const val: f32 = @floatFromInt(out[y*(in.width+2)+x]);
             const nval: f32 = val * 255.0/Mf;
-            out[y*(in.width+2)+x] = @truncate(@as(u32, @bitCast( @as(i32, @intFromFloat(nval)))));
+            out[y*(in.width+2)+x] = @truncate(@as(u32, @bitCast(
+                        @as(i32, @intFromFloat(nval)))));
         }
     }
 }
@@ -142,7 +155,8 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
 
         if (i > 0 and !nlflag) {
             var kerning: c.FT_Vector = undefined;
-            err = c.FT_Get_Kerning(face, old_index, glyph_index, c.FT_KERNING_DEFAULT, &kerning);
+            err = c.FT_Get_Kerning(face, old_index, glyph_index,
+                c.FT_KERNING_DEFAULT, &kerning);
             if (err != 0) {
                 print ("error in defining kerning\n", .{});
                 return;
@@ -165,7 +179,6 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
             continue;
         }
         if (i < tick_number-4) {
-
             // showing letters
             for (0..bitmap.width) |x| {
                 for (0..bitmap.rows) |y| {
@@ -206,8 +219,10 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                     const vr: i32 = @intFromFloat(cgf[2]*m + bgf[2]*(1.0-m));
                     v.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
                     if ((x&1)==0 and (y&1) == 0) {
-                        v.frame.data[1][pos[1]] = @truncate(@as(u32, @bitCast(ur)));
-                        v.frame.data[2][pos[2]] = @truncate(@as(u32, @bitCast(vr)));
+                        v.frame.data[1][pos[1]] = @truncate(@as(u32,
+                                @bitCast(ur)));
+                        v.frame.data[2][pos[2]] = @truncate(@as(u32,
+                                @bitCast(vr)));
                     }
                 }
             }
@@ -224,8 +239,7 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                 for (0..bitmap.rows+2) |y| {
                     const angle_coef: f32 = (@as(f32, @floatFromInt(frame)) -
                         @as(f32, @floatFromInt(@as(i32, @bitCast(@as(u32,
-                                            @truncate(i))))))*tick) /
-                        (4.0*tick);
+                        @truncate(i))))))*tick)/(4.0*tick);
                     const m: f32 = @as(f32, @floatFromInt(@as(i32,
                         borders[y*(bitmap.width+2) + x])))/255.0;
 

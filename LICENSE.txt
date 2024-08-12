@@ -11,8 +11,8 @@ is deemed unsafe. It may have potential flaws, vulnerabilities, or errors that
 could lead to system malfunctions or other undesired consequences. The Licensee
 acknowledges the presence of such risks associated with the Software.
 
-2. Non-Responsibility: The Author shall not be held responsible for any
-potential harm or adverse effects that may arise from minors (under 18)
+2. Non-Responsibility for mental harm: The Author shall not be held responsible
+for any potential harm or adverse effects that may arise from minors (under 18)
 accessing or reading the Software's unsafe source code. It is strongly advised
 that minors refrain from engaging with the source code due to its unsafe nature.
 

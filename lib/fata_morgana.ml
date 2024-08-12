@@ -4,6 +4,7 @@ open Foreign
 type fmvideo = unit ptr
 let fmvideo : fmvideo typ = ptr void
 
+(* importing functions from zig library *)
 let init_video =
     foreign "init" (string @-> int @-> int @-> (ptr int) @-> (returning fmvideo))
 let cwrite_and_close =
@@ -26,6 +27,8 @@ let write_text =
     @-> float @-> float @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
+
+(* generating c structures *)
 let make_color r g b =
     (CArray.start(CArray.of_list uint8_t
     [(Unsigned.UInt8.of_int r);(Unsigned.UInt8.of_int g);(Unsigned.UInt8.of_int b)]))
@@ -53,6 +56,7 @@ module Color = struct
         | DeepBlue of int
         | LightBlue of int
 
+(* monads ?? *)
     let map f = function
         | Dark0 num -> Dark0 (f num) 
         | Dark1 num -> Dark1 (f num) 
@@ -71,6 +75,7 @@ module Color = struct
         | DeepBlue num -> DeepBlue (f num) 
         | LightBlue num -> LightBlue (f num)
 
+(* checking for right color *)
     let dark0 c =
         match c with
     | Dark0 num -> Some(num)
@@ -176,7 +181,7 @@ end
 let init name w h =
     let e = allocate int 0 in
     let open Color in
-    let colorset = [
+    let colorset = [ (* color preset *)
         Dark0 0x2e3440;
         Dark1 0x3b4252;
         Dark2 0x434c5e;
@@ -284,6 +289,7 @@ let do_action v acc counter =
             | Some(c) -> paint_background vid c
 ;;
 
+(*is it what slows down the programm?*)
 let visualise_scene scene action_list time =
     let duration = int_of_float (time*.25.) in
     let rec process_actions list counter endc is_root =

@@ -3,3 +3,4 @@ pub usingnamespace @import("essence.zig");
 pub usingnamespace @import("color_magic.zig");
 pub usingnamespace @import("shapes.zig");
 pub usingnamespace @import("text.zig");
+pub usingnamespace @import("pixels.zig");

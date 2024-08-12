@@ -2,9 +2,12 @@ const std = @import("std");
 const FMVideo = @import("essence.zig").FMVideo;
 const maths = @import("maths.zig");
 
-export fn circle (v: *FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32, duration: f32) void {
-    const p: [2]i32 = .{@intFromFloat((pf[0]+1.0)*@as(f32, @floatFromInt(v.ctx.width))/2.0),
-                        @intFromFloat((1.0-pf[1])*@as(f32, @floatFromInt(v.ctx.height))/2.0)};
+export fn circle (v: *FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32,
+    duration: f32) void {
+    const p: [2]i32 = .{
+        @intFromFloat((pf[0]+1.0)*@as(f32, @floatFromInt(v.ctx.width))/2.0),
+        @intFromFloat((1.0-pf[1])*@as(f32, @floatFromInt(v.ctx.height))/2.0),
+    };
     const num: f32 = @floatFromInt(v.ctx.framerate.num);
     const den: f32 = @floatFromInt(v.ctx.framerate.den);
     const nframes: f32 = duration * num / den;

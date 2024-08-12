@@ -63,9 +63,14 @@ Write a function in ZIG in that takes visual parameters and which frame from
 animation is drawn. Then add type to `fmaction` in fmaction and add call of c
 function to function `do_action`.
 
+# How library is structured
+Framework is powered by `avlib` library which is a part of FFMPEG. The video
+data is stored in a single data structure `FMVideo` most other functions
+operates on a single instance of `FMVideo`.
+
+
 # To do list
 - add support to a better format
 - make generalised transformation's animation
 - make a better coloring
 - write latex parser
-- add shaders

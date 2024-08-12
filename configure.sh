@@ -31,28 +31,30 @@ check_and_install_packages() {
     # Check if ctypes package is installed
     if opam list | grep -q "ctypes"; then
         echo "ctypes package is already installed."
-    else
-        echo "ctypes package is not installed. Installing it..."
-        if opam install ctypes; then
-            echo "ctypes package installed successfully."
-        else
-            echo "Failed to install ctypes package."
-            return 1
-        fi
+        return 0
     fi
-    
-    # Check if ctypes-foreign package is installed
-    if opam list | grep -q "ctypes-foreign"; then
-        echo "ctypes-foreign package is already installed."
-    else
-        echo "ctypes-foreign package is not installed. Installing it..."
-        if opam install ctypes-foreign; then
-            echo "ctypes-foreign package installed successfully."
-        else
-            echo "Failed to install ctypes-foreign package."
-            return 1
-        fi
-    fi
+
+    # echo "ctypes package is not installed. Installing it..."
+    #
+    # if opam install ctypes; then
+    #     echo "ctypes package installed successfully."
+    # else
+    #     echo "Failed to install ctypes package."
+    #     return 1
+    # fi
+    #
+    # # Check if ctypes-foreign package is installed
+    # if opam list | grep -q "ctypes-foreign"; then
+    #     echo "ctypes-foreign package is already installed."
+    # else
+    #     echo "ctypes-foreign package is not installed. Installing it..."
+    #     if opam install ctypes-foreign; then
+    #         echo "ctypes-foreign package installed successfully."
+    #     else
+    #         echo "Failed to install ctypes-foreign package."
+    #         return 1
+    #     fi
+    # fi
     
     return 0
 }
@@ -66,7 +68,7 @@ else
 fi
 
 check_and_install_packages
-if [$? -eq 0 ]; then
+if [ $? -eq 0 ]; then
     echo "Ocaml PACKAGES are installed successfully"
 else
     echo "Ocaml PACKAGE's installation failed."
