@@ -68,6 +68,11 @@ Framework is powered by `avlib` library which is a part of FFMPEG. The video
 data is stored in a single data structure `FMVideo` most other functions
 operates on a single instance of `FMVideo`.
 
+## Ocaml's part
+
++ `init` function allocates memory for fmvideo and returns a product of video
+and colorscheme
+
 
 # To do list
 - add support to a better format
