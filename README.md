@@ -15,7 +15,7 @@ Create video scene with
 ```ocaml
 let scene = Fm.init "video.mpeg" 720 480 in
 ```
-Only mpeg1video format is supported for now
+Only mpeg4 format with h264 encoding is supported for now
 
 In module Fata-morgana there is a type
 ```ocaml
@@ -75,7 +75,7 @@ and colorscheme
 
 
 # To do list
-- add support to a better format
-- make generalised transformation's animation
-- make a better coloring
 - write latex parser
+- not pessimisation
+- optimization
+- gpu acceleration

@@ -16,6 +16,9 @@ pub fn build(b: *std.Build) void {
     lib.addLibraryPath(b.path("bin"));
     lib.linkSystemLibrary("freetype");
     lib.linkSystemLibrary("libavcodec");
+    lib.linkSystemLibrary("libavformat");
+    lib.linkSystemLibrary("libavutil");
+    lib.linkSystemLibrary("png");
 
     const test_step = b.step("test", "Run unit tests!");
     const unit_test = b.addTest(.{

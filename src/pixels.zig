@@ -2,57 +2,69 @@ const std = @import("std");
 const FMVideo = @import("essence.zig").FMVideo;
 const print = std.debug.print;
 const c = @cImport({
-    @cInclude("png.h");
+    @cInclude("stdio.h");
 });
+const png = @import("c/png.zig");
 const maths = @import("maths.zig");
 
-pub fn place_pixel_art (v: FMVideo, pos_x: u32, pos_y: u32, name: [*c]u8,
-    scale: i32, duration: f32) void {
+export fn place_pixel_art (v: *FMVideo, pos_xf: f32, pos_yf: f32, name: [*c]u8,
+    scale: u32) void {
+    const fw: f32 = @floatFromInt(v.codec_ctx.width);
+    const fh: f32 = @floatFromInt(v.codec_ctx.height);
+    const pos_x: u32 = @bitCast(@as(i32, @intFromFloat((pos_xf+1)*fw/2.0)));
+    const pos_y: u32 = @bitCast(@as(i32, @intFromFloat((1-pos_yf)*fh/2.0)));
+
     const allocator = v.arena.allocator();
-    const sig_read: u32 = 0;
-    _ = sig_read;
-    _ = pos_x;
-    _ = pos_y;
-    _ = scale;
-    _ = name;
-    _ = duration;
-    const width: u32 = undefined;
-    const height: u32 = undefined;
-    const bit_depth: i32 = undefined;
-    const color_type: i32 = undefined;
-    const interlace_type: i32 = undefined;
+    var width: u32 = undefined;
+    var height: u32 = undefined;
+    var bit_depth: i32 = undefined;
+    var color_type: i32 = undefined;
+    var interlace_type: i32 = undefined;
 
-    const file = std.fs.openFileAbsolute("/Users/giorno/projects/fata-morgana/arts/professor.png",
-        .{}) catch {
-        print("File not found\n");
-    };
-    defer file.close();
+    // print("opening file\n", .{});
+    const file = c.fopen(name, "r");
+    if (file == null) {
+        print("can't open the file", .{});
+        return;
+    }
+    defer _ = c.fclose(file);
 
-    const png_ptr = c.png_create_read_struct(c.PNG_LIBPNG_VER_STRING, null,
+    // print("creating read structure\n", .{});
+    var png_ptr = png.png_create_read_struct(png.PNG_LIBPNG_VER_STRING, null,
         null, null);
     if (png_ptr == null) return;
-    defer c.png_destroy_read_struct(&png_ptr, null, null);
+    defer png.png_destroy_read_struct(&png_ptr, null, null);
 
-    const info_ptr = c.png_create_info_struct(png_ptr);
+    // print("creating info structure\n", .{});
+    var info_ptr = png.png_create_info_struct(png_ptr);
     if (info_ptr == null) return;
-    defer c.png_destroy_info_struct(png_ptr, &info_ptr);
+    defer png.png_destroy_info_struct(png_ptr, &info_ptr);
 
-    c.png_read_info(png_ptr, info_ptr);
-    c.png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
+    png.png_init_io(png_ptr, @ptrCast(file));
+
+    // print("reading info\n", .{});
+    png.png_read_info(png_ptr, info_ptr);
+    // print("getting IHDR\n", .{});
+    _ = png.png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
        &interlace_type, null, null);
     // where data will be read from png file
     // no opacity
-    const row_pointers = allocator.alloc(*u8, height) catch {
-        print ("can't allocate raw pointers");
+    // print("allocating row pointers\n", .{});
+    const row_pointers = allocator.alloc([*c]u8, height) catch {
+        print ("can't allocate raw pointers\n", .{});
         return;
     };
     defer allocator.free(row_pointers);
     for (0..height) |y| {
-        row_pointers[y] = allocator.alloc(*u8,
-            c.png_get_rowbytes(png_ptr, info_ptr));
+        const array = allocator.alloc(u8, width*4) catch {
+            print("can't allocate a row", .{});
+            return;
+        };
+        row_pointers[y] = array.ptr; 
     }
-
-    c.png_read_image(png_ptr, row_pointers);
+    
+    // print("reading_image\n", .{});
+    png.png_read_image(png_ptr, row_pointers.ptr);
 
     // const num: f32 = @floatFromInt(v.ctx.framerate.num);
     // const den: f32 = @floatFromInt(v.ctx.framerate.den);
@@ -61,10 +73,12 @@ pub fn place_pixel_art (v: FMVideo, pos_x: u32, pos_y: u32, name: [*c]u8,
     // converting rgb to yuv
     // add SIMD here one day
 
+
+    // print("converting rgb to yuv\n", .{});
     for (0..height) |y| {
         const row = row_pointers[y];
         for (0..width) |x| {
-            const px = row + x*4;
+            const px = row[x*4..(x+1)*4];
             const r: f32 = @floatFromInt(px[0]);
             const g: f32 = @floatFromInt(px[1]);
             const b: f32 = @floatFromInt(px[2]);
@@ -77,29 +91,42 @@ pub fn place_pixel_art (v: FMVideo, pos_x: u32, pos_y: u32, name: [*c]u8,
         }
     }
 
-     const linesize = v.frame.linesize;
-    for (0..@as(u32, @bitCast(nframes))) |n_frame| {
-        // do not forget to use scale
-        for (0..width) |y| {
-            const row = row_pointers[y];
-            for (0..height) |x| {
-                const px = row + x*4;
-                for (0..scale) |shift_y| {
-                    for (0..scale) |shift_x| {
-                        v.frame.data[0][(pos_y+y*scale+shift_y)*linesize[0] +
-                            pos_x+x*scale+shift_x] = px[0];
+    const linesize = [3]u32{
+        @intCast(v.frame.linesize[0]),
+        @intCast(v.frame.linesize[1]),
+        @intCast(v.frame.linesize[2]),
+    };
+    // print("writing image to the screen\n", .{});
+    for (0..width) |y| {
+         const row = row_pointers[y];
+         for (0..height) |x| {
+             const px = row[x*4..(x+1)*4];
+             const r: f32 = @floatFromInt(px[0]);
+             const g: f32 = @floatFromInt(px[1]);
+             const b: f32 = @floatFromInt(px[2]);
+             const a: f32 = @floatFromInt(px[3]);
+             for (0..scale) |shift_y| {
+                 for (0..scale) |shift_x| {
+                     const data_r: f32 = @floatFromInt(v.frame.data[0][(pos_y+y*scale+shift_y)*linesize[0] +
+                         pos_x+x*scale+shift_x]);
+                     const data_g: f32 = @floatFromInt(v.frame.data[1][(pos_y+y*scale+shift_y)/2*linesize[1] +
+                         (pos_x+x*scale+shift_x)/2]);
+                     const data_b: f32 = @floatFromInt(v.frame.data[2][(pos_y+y*scale+shift_y)/2*linesize[2] +
+                         (pos_x+x*scale+shift_x)/2]);
+                    v.frame.data[0][(pos_y+y*scale+shift_y)*linesize[0] +
+                         pos_x+x*scale+shift_x] = @truncate(@as(u32,@bitCast(@as(i32, @intFromFloat(
+                                             r*a+data_r*(1-a))))));
+                    if (@mod(pos_y+y*scale+shift_y, 2) == 0 and
+                        @mod(pos_x+x*scale+shift_x, 2) == 0) {
                         v.frame.data[1][(pos_y+y*scale+shift_y)/2*linesize[1] +
-                            (pos_x+x*scale+shift_x)/2] = px[1];
+                            (pos_x+x*scale+shift_x)/2] = @truncate(@as(u32,@bitCast(@as(i32, @intFromFloat(
+                                                g*a+data_g*(1-a))))));
                         v.frame.data[2][(pos_y+y*scale+shift_y)/2*linesize[2] +
-                            (pos_x+x*scale+shift_x)/2] = px[2];
+                            (pos_x+x*scale+shift_x)/2] = @truncate(@as(u32, @bitCast(@as(i32, @intFromFloat
+                                            (b*a+data_b*(1-a))))));
                     }
-                }
-            }
-        }
-    }
-}
-
-test "png" {
-    _ = try std.fs.openFileAbsolute("/Users/giorno/projects/fata-morgana/arts/professor.png",
-        .{});
+                 }
+             }
+         }
+     }
 }

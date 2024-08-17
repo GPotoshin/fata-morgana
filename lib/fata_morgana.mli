@@ -52,12 +52,15 @@ val middleBox : fmbox
 type fmaction =
 | Text of string*fmbox*fontsize
 | Circle of float*float*int*int*float
+| PixelArt of float*float*int*string
 | Background
 
 val init : string -> int -> int -> (Color.fmcolor list * fmvideo) option
 val write_and_close : (Color.fmcolor list) * fmvideo -> unit
 
 val addText : string -> fmbox -> fontsize -> fmaction list -> fmaction list
+val addPixelArt : float -> float -> int -> string -> fmaction list ->
+    fmaction list
 val addBackground : fmaction list -> fmaction list
 
 val visualise_scene : Color.fmcolor list * fmvideo -> fmaction list -> float -> unit

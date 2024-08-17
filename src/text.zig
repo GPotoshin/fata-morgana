@@ -1,10 +1,7 @@
 const std = @import("std");
 const FMVideo = @import("essence.zig").FMVideo;
 const print = std.debug.print;
-const c = @cImport({
-    @cInclude("ft2build.h");
-    @cInclude("freetype/freetype.h");
-});
+const ft = @import("c/freetype.zig");
 const maths = @import("maths.zig");
 
 fn read_with_borders (x: i32, y: i32, w: usize, h: usize, a: [*]u8) i32 {
@@ -26,7 +23,7 @@ fn print_box (a: []u8, w: usize, h: usize) void {
     }
 }
 
-fn calculate_borders (out: []u8, in: c.FT_Bitmap) void {
+fn calculate_borders (out: []u8, in: ft.FT_Bitmap) void {
     var M: i32 = 0;
     for (0..in.width+2) |x| {
         for (0..in.rows+2) |y| {
@@ -83,8 +80,8 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
     [*c]u32, len: i32, frames: i32, frame: i32, size: i32, font_name: [*c]u8,
     x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
 
-    const width_f: f32 = @floatFromInt(v.ctx.width);
-    const height_f: f32 = @floatFromInt(v.ctx.height);
+    const width_f: f32 = @floatFromInt(v.codec_ctx.width);
+    const height_f: f32 = @floatFromInt(v.codec_ctx.height);
     const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
     const allocator = v.arena.allocator();
     
@@ -105,15 +102,15 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
         @floatFromInt(@as(i32, cg[2])),
     };
 
-    var lib: c.FT_Library = undefined;
-    var face: c.FT_Face = undefined;
-    var err: i32 = c.FT_Init_FreeType(&lib);
+    var lib: ft.FT_Library = undefined;
+    var face: ft.FT_Face = undefined;
+    var err: i32 = ft.FT_Init_FreeType(&lib);
     if (err != 0) {
         print("... an error occurred during library initialization ...\n", .{});
         return;
     }
-    err = c.FT_New_Face(lib, font_name, 0, &face); 
-    if (err == c.FT_Err_Unknown_File_Format) {
+    err = ft.FT_New_Face(lib, font_name, 0, &face); 
+    if (err == ft.FT_Err_Unknown_File_Format) {
         print (\\... the font file could be opened and read, but it appears
                \\... that its font format is unsupported
                , .{});
@@ -122,13 +119,13 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
         print ("font file could not be opened or read, or it is broken", .{});
         return;
     }
-    err = c.FT_Set_Char_Size (face, 0, 16*size, 300, 300);
+    err = ft.FT_Set_Char_Size (face, 0, 16*size, 300, 300);
     if (err != 0) {
         print ("couldn't set chat size\n", .{});
         return;
     }
 
-    var old_index: c.FT_UInt = 0;
+    var old_index: ft.FT_UInt = 0;
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
     const tick = @as(f32, @floatFromInt(frames))/@as(f32, @floatFromInt(len+4));
@@ -146,17 +143,17 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
             nlflag = true;
             continue;
         }
-        const glyph_index = c.FT_Get_Char_Index(face, str[i]);
-        err = c.FT_Load_Glyph(face, glyph_index, c.FT_LOAD_DEFAULT);
+        const glyph_index = ft.FT_Get_Char_Index(face, str[i]);
+        err = ft.FT_Load_Glyph(face, glyph_index, ft.FT_LOAD_DEFAULT);
         if (err != 0) {
             print ("couldn't load a glyph\n", .{});
             return;
         }
 
         if (i > 0 and !nlflag) {
-            var kerning: c.FT_Vector = undefined;
-            err = c.FT_Get_Kerning(face, old_index, glyph_index,
-                c.FT_KERNING_DEFAULT, &kerning);
+            var kerning: ft.FT_Vector = undefined;
+            err = ft.FT_Get_Kerning(face, old_index, glyph_index,
+                ft.FT_KERNING_DEFAULT, &kerning);
             if (err != 0) {
                 print ("error in defining kerning\n", .{});
                 return;
@@ -164,7 +161,7 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
             pen_x += @truncate(kerning.x >> 6);
         }
 
-        err = c.FT_Render_Glyph(face.*.glyph, c.FT_RENDER_MODE_NORMAL);
+        err = ft.FT_Render_Glyph(face.*.glyph, ft.FT_RENDER_MODE_NORMAL);
         if (err != 0) {
             print ("error in rendering\n", .{});
             return;
@@ -387,7 +384,7 @@ export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
 fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32, 
     str: [*c]u32, len: i32, font_name: [*c]u8, size: i32) ?[]u32 {
     const window_width: i32 = @intFromFloat((x_r-x_l)*@as(f32,
-            @floatFromInt(v.ctx.width))/2.0);
+            @floatFromInt(v.codec_ctx.width))/2.0);
 
     const allocator = v.arena.allocator();
 
@@ -398,16 +395,16 @@ fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32,
     };
 
     // loading library
-    var lib: c.FT_Library = undefined;
-    var face: c.FT_Face = undefined;
-    var err: i32 = c.FT_Init_FreeType(&lib);
+    var lib: ft.FT_Library = undefined;
+    var face: ft.FT_Face = undefined;
+    var err: i32 = ft.FT_Init_FreeType(&lib);
     if (err != 0) {
         print("... an error occurred during library initialization ...\n", .{});
         allocator.free(retval);
         return null;
     }
-    err = c.FT_New_Face(lib, font_name, 0, &face); 
-    if (err == c.FT_Err_Unknown_File_Format) {
+    err = ft.FT_New_Face(lib, font_name, 0, &face); 
+    if (err == ft.FT_Err_Unknown_File_Format) {
         print (\\... the font file could be opened and read, but it appears
                \\... that its font format is unsupported
                , .{});
@@ -418,7 +415,7 @@ fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32,
         allocator.free(retval);
         return null;
     }
-    err = c.FT_Set_Char_Size (face, 0, 16*size, 300, 300);
+    err = ft.FT_Set_Char_Size (face, 0, 16*size, 300, 300);
     if (err != 0) {
         print ("couldn't set chat size\n", .{});
         allocator.free(retval);
@@ -426,7 +423,7 @@ fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32,
     }
 
     // preparing for maths
-    var old_index: c.FT_UInt = 0;
+    var old_index: ft.FT_UInt = 0;
     var pen_x: i32 = 0;
     var i: u32 = 0;
     var last_space: u32 = 0;
@@ -438,8 +435,8 @@ fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32,
             last_space = i;
         }
         // loading glyph
-        const glyph_index = c.FT_Get_Char_Index(face, str[i]);
-        err = c.FT_Load_Glyph(face, glyph_index, c.FT_LOAD_DEFAULT);
+        const glyph_index = ft.FT_Get_Char_Index(face, str[i]);
+        err = ft.FT_Load_Glyph(face, glyph_index, ft.FT_LOAD_DEFAULT);
         if (err != 0) {
             print ("couldn't load a glyph\n", .{});
             allocator.free(retval);
@@ -447,8 +444,8 @@ fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32,
         }
         // adding kerning if not on new line
         if (!new_line) {
-            var kerning: c.FT_Vector = undefined;
-            err = c.FT_Get_Kerning(face, old_index, glyph_index, c.FT_KERNING_DEFAULT, &kerning);
+            var kerning: ft.FT_Vector = undefined;
+            err = ft.FT_Get_Kerning(face, old_index, glyph_index, ft.FT_KERNING_DEFAULT, &kerning);
             if (err != 0) {
                 print ("error in defining kerning\n", .{});
                 allocator.free(retval);

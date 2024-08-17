@@ -27,6 +27,9 @@ let write_text =
     @-> float @-> float @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
+let place_pixel_art =
+    foreign "place_pixel_art" (fmvideo @-> float @-> float @-> ptr char
+    @-> uint32_t @-> (returning void))
 
 (* generating c structures *)
 let make_color r g b =
@@ -220,17 +223,26 @@ let middleBox: fmbox = (-0.8, 0.8, -0.66, 0.66)
 type fmaction =
 | Text of string*fmbox*fontsize
 | Circle of float*float*int*int*float
+| PixelArt of float*float*int*string
 | Background
 
 let (<~) f g = g (f)
 
 let addText s box size = (fun scene ->
     scene @ [Text (s, box, size)])
+let addPixelArt x y scale name = (fun scene ->
+    scene @ [PixelArt (x, y, scale, name)])
 let addBackground = fun scene -> scene @ [Background]
 
 let do_action v acc counter =
     let open Color in
     match acc with
+    | PixelArt (x, y, scale, name) ->
+            let name_carray = CArray.of_string name in
+            let name_ptr = CArray.start name_carray in
+            let uscale = Unsigned.UInt32.of_int scale in
+            let (_, vid) = v in
+            place_pixel_art vid x y name_ptr uscale; 
     | Text (str, box, size) ->
             let (x_l, x_r, y_l, y_t) = box in 
             let size_num = match size with
