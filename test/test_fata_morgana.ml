@@ -6,7 +6,7 @@ let height = 480
 let width = 720
 
 let () =
-    let v = match Fm.init "test.mpeg" width height with
+    let v = match Fm.init "v.mp4" width height with
     | Some(x) -> x
     | None -> exit 1
     in
@@ -15,9 +15,9 @@ let () =
 
     let sq = []
     <~ Fm.addBackground
-    <~ Fm.addText problem Fm.middleBox Fm.Big
-    <~ Fm.addPixelArt (-0.2) (-0.2) 3 "arts/professor.png" in
+    <~ Fm.addText problem Fm.middleBox Fm.Font.Big Fm.Font.Maths
+    <~ Fm.addPixelArt (-0.2) (-0.2) 3 "arts/red_sq.png" in
 
-    Fm.visualise_scene v sq 10.;
+    Fm.visualise_scene v sq 9.;
     Fm.write_and_close v;
 ;;

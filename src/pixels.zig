@@ -14,7 +14,7 @@ export fn place_pixel_art (v: *FMVideo, pos_xf: f32, pos_yf: f32, name: [*c]u8,
     const pos_x: u32 = @bitCast(@as(i32, @intFromFloat((pos_xf+1)*fw/2.0)));
     const pos_y: u32 = @bitCast(@as(i32, @intFromFloat((1-pos_yf)*fh/2.0)));
 
-    const allocator = v.arena.allocator();
+    const allocator = v.allocator;
     var width: u32 = undefined;
     var height: u32 = undefined;
     var bit_depth: i32 = undefined;
@@ -101,10 +101,10 @@ export fn place_pixel_art (v: *FMVideo, pos_xf: f32, pos_yf: f32, name: [*c]u8,
          const row = row_pointers[y];
          for (0..height) |x| {
              const px = row[x*4..(x+1)*4];
-             const r: f32 = @floatFromInt(px[0]);
-             const g: f32 = @floatFromInt(px[1]);
-             const b: f32 = @floatFromInt(px[2]);
-             const a: f32 = @floatFromInt(px[3]);
+             const yr: f32 = @floatFromInt(px[0]);
+             const ur: f32 = @floatFromInt(px[1]);
+             const vr: f32 = @floatFromInt(px[2]);
+             const a: f32 = @as(f32, @floatFromInt(px[3]))/255.0;
              for (0..scale) |shift_y| {
                  for (0..scale) |shift_x| {
                      const data_r: f32 = @floatFromInt(v.frame.data[0][(pos_y+y*scale+shift_y)*linesize[0] +
@@ -115,15 +115,15 @@ export fn place_pixel_art (v: *FMVideo, pos_xf: f32, pos_yf: f32, name: [*c]u8,
                          (pos_x+x*scale+shift_x)/2]);
                     v.frame.data[0][(pos_y+y*scale+shift_y)*linesize[0] +
                          pos_x+x*scale+shift_x] = @truncate(@as(u32,@bitCast(@as(i32, @intFromFloat(
-                                             r*a+data_r*(1-a))))));
+                                             yr*a+data_r*(1-a))))));
                     if (@mod(pos_y+y*scale+shift_y, 2) == 0 and
                         @mod(pos_x+x*scale+shift_x, 2) == 0) {
                         v.frame.data[1][(pos_y+y*scale+shift_y)/2*linesize[1] +
                             (pos_x+x*scale+shift_x)/2] = @truncate(@as(u32,@bitCast(@as(i32, @intFromFloat(
-                                                g*a+data_g*(1-a))))));
+                                                ur*a+data_g*(1-a))))));
                         v.frame.data[2][(pos_y+y*scale+shift_y)/2*linesize[2] +
                             (pos_x+x*scale+shift_x)/2] = @truncate(@as(u32, @bitCast(@as(i32, @intFromFloat
-                                            (b*a+data_b*(1-a))))));
+                                            (vr*a+data_b*(1-a))))));
                     }
                  }
              }

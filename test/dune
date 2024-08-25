@@ -1,4 +1,5 @@
 (executable
  (name test_fata_morgana)
+ (modes byte)
  (link_flags -cclib -lfata_morgana)
  (libraries fata_morgana))

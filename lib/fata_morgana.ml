@@ -6,7 +6,8 @@ let fmvideo : fmvideo typ = ptr void
 
 (* importing functions from zig library *)
 let init_video =
-    foreign "init" (string @-> int @-> int @-> (ptr int) @-> (returning fmvideo))
+    foreign "init" (string @-> int @-> int @-> ptr (ptr char) @-> ptr uint8_t
+        @-> ptr int @-> (returning fmvideo))
 let cwrite_and_close =
     foreign "write_and_close" (fmvideo @-> (returning void))
 let add_frame =
@@ -22,9 +23,9 @@ let circle =
     foreign "circle" (fmvideo @-> ptr float @-> ptr uint8_t @-> ptr uint8_t
     @-> int @-> int @-> float @-> (returning void))
 let write_text =
-    foreign "write_text" (fmvideo @-> ptr uint8_t @-> ptr uint8_t @-> ptr uint8_t
-    @-> ptr int @-> int @-> int @-> int @-> int @-> ptr char @-> float @-> float
-    @-> float @-> float @-> (returning void))
+    foreign "write_text" (fmvideo @-> ptr uint8_t @-> ptr uint8_t
+    @-> ptr uint8_t @-> ptr int @-> int @-> int @-> int @-> uint8_t
+    @-> uint8_t @-> float @-> float @-> float @-> float @-> (returning void))
 let paint_background =
     foreign "paint_background" (fmvideo @-> ptr uint8_t @-> (returning void))
 let place_pixel_art =
@@ -181,8 +182,26 @@ module Color = struct
     ;;
 end
 
+module Font = struct
+    type size = Small | Medium | Big
+    type font = Regular | Maths | Code
+end
+
 let init name w h =
     let e = allocate int 0 in
+    let fontset = [
+        "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf";
+        "/Users/giorno/projects/fata-morgana/fonts/Euler-Math.otf";
+        "/Users/giorno/projects/fata-morgana/fonts/APL386B.ttf";
+    ] in
+    let ptrlist = List.map (function str -> CArray.start (CArray.of_string str))
+    fontset in
+    let fontarray = CArray.start (CArray.of_list (ptr char) ptrlist) in
+    let sizes = CArray.start (CArray.of_list uint8_t [
+        Unsigned.UInt8.of_int 16;
+        Unsigned.UInt8.of_int 32;
+        Unsigned.UInt8.of_int 64;
+    ]) in
     let open Color in
     let colorset = [ (* color preset *)
         Dark0 0x2e3440;
@@ -202,7 +221,7 @@ let init name w h =
         DeepBlue 0x5e81ac;
         LightBlue 0x88c0d0;
     ] in
-    let v = init_video name w h e in
+    let v = init_video name w h fontarray sizes e in
     let retval = (List.map rgb_to_yuv colorset, v) in
     match !@e with
     | 0 -> Some(retval)
@@ -211,25 +230,20 @@ let init name w h =
 
 (* frame rate is here because I want to do calculations here, maybe I'll regret 
  one day, but I want to master ocaml and not c that I already know well*)
-
-type fontsize =
-| Small
-| Medium
-| Big
-
+(* (x_l, x_r, y_b, y_t) *)
 type fmbox = float * float * float * float
 let middleBox: fmbox = (-0.8, 0.8, -0.66, 0.66)
 
 type fmaction =
-| Text of string*fmbox*fontsize
-| Circle of float*float*int*int*float
-| PixelArt of float*float*int*string
-| Background
+    | Text of string*fmbox*Font.size*Font.font
+    | Circle of float*float*int*int*float
+    | PixelArt of float*float*int*string
+    | Background
 
 let (<~) f g = g (f)
 
-let addText s box size = (fun scene ->
-    scene @ [Text (s, box, size)])
+let addText s box size font = (fun scene ->
+    scene @ [Text (s, box, size, font)])
 let addPixelArt x y scale name = (fun scene ->
     scene @ [PixelArt (x, y, scale, name)])
 let addBackground = fun scene -> scene @ [Background]
@@ -243,12 +257,12 @@ let do_action v acc counter =
             let uscale = Unsigned.UInt32.of_int scale in
             let (_, vid) = v in
             place_pixel_art vid x y name_ptr uscale; 
-    | Text (str, box, size) ->
+    | Text (str, box, size, font_type) ->
             let (x_l, x_r, y_l, y_t) = box in 
             let size_num = match size with
-            | Small -> 12
-            | Medium -> 32
-            | Big -> 64 in
+            | Small -> Unsigned.UInt8.of_int 0
+            | Medium -> Unsigned.UInt8.of_int 1
+            | Big -> Unsigned.UInt8.of_int 2 in
             if x_l > 1. || x_l < -.1. then
                 print_endline "x_l is out of [-1, 1]"
             else if x_r > 1. || x_r < -.1. then
@@ -271,11 +285,18 @@ let do_action v acc counter =
             (match find_color dark0 colors with
             | None -> print_endline "can't find color dark0";
             | Some(bgc) ->
-            let font_name = "/Users/giorno/projects/fata-morgana/fonts/LinLibertine_R.otf" in
-            let cfont_name = CArray.of_string font_name in
-            write_text vid c fgc bgc (CArray.start ascii_carray) (String.length str)
-            (2*(String.length str)) counter size_num (CArray.start cfont_name)
-            x_l x_r y_l y_t;
+            let font_num = match font_type with 
+            | Regular -> Unsigned.UInt8.of_int 0
+            | Maths -> Unsigned.UInt8.of_int 1
+            | Code -> Unsigned.UInt8.of_int 2
+            in
+            let str_in_int = CArray.start ascii_carray in
+            let length = String.length str in
+            let frame_number = 2*length in
+            print_endline "calling function";
+            write_text vid c fgc bgc str_in_int length frame_number counter
+            size_num font_num x_l x_r y_l y_t;
+            print_endline "control returned";
             )))
 
     | Circle (x, y, r, w, t) -> 
@@ -303,24 +324,18 @@ let do_action v acc counter =
 
 (*is it what slows down the programm?*)
 let visualise_scene scene action_list time =
+    let (_, v) = scene in
     let duration = int_of_float (time*.25.) in
-    let rec process_actions list counter endc is_root =
-        if counter >= endc then
-            ()
-        else (
-            (match list with
+    for counter = 0 to duration do
+        add_frame v;
+        let rec process_actions list =
+            match list with
             | first :: rest ->
-                (match is_root with
-                | true -> let (_, v) = scene in
-                    add_frame v;
-                | false -> ());
                 do_action scene first counter;
-                process_actions rest counter endc false
-            | [] -> ());
-            if is_root then
-                let (_, v) = scene in
-                encode v;
-                process_actions list (counter+1) endc true)
-    in
-    process_actions action_list 0 duration true
+                process_actions rest
+            | [] -> ()
+        in
+        process_actions action_list;
+        encode v;
+    done
 ;;

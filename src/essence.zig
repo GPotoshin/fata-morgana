@@ -7,7 +7,22 @@ const c = @cImport({
 const avc = @import("c/avcodec.zig");
 const avf = @import("c/avformat.zig");
 const avo = @import("c/avopt.zig");
+const ft = @import("c/freetype.zig");
 
+pub const Face = enum {
+    Regular,
+    Maths,
+    Code,
+};
+
+pub const Bitmap = struct {
+    data: ?[*]u8,
+    rows: u32,
+    width: u32,
+    top: i32,
+    left: i32,
+};
+ 
 pub const FMVideo = struct {
     codec: *avc.AVCodec,
     codec_ctx: *avc.AVCodecContext,
@@ -17,25 +32,38 @@ pub const FMVideo = struct {
     packet: *avc.AVPacket,
     stream: *avf.AVStream,
     counter: u32,
-    arena: std.heap.ArenaAllocator,
+    
+    gpa: std.heap.GeneralPurposeAllocator(.{}),
+    allocator: std.mem.Allocator,
+
+    // font fields
+    font_size: []u8,
+    ft_lib: ft.FT_Library,
+    faces: [3]ft.FT_Face,
+    glyphmaps: [3][3]std.AutoHashMap(u32, Bitmap),
 };
 
-// trying to add support for mpeg4 with h264
-export fn init (name: [*c]u8, width: i32, height: i32, e: *i32) *FMVideo {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    var allocator = arena.allocator();
+pub export fn init (name: [*c]u8, width: i32, height: i32, face_names: [*c][*c]u8,
+    font_sizes: [*c]u8, e: *i32) *FMVideo {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
     const v_slice: []FMVideo = allocator.alloc(FMVideo, 1) catch |err| {
         std.log.err("Failed to allocate memory: {}", .{err});
-        e.* = 1; //passing error to C
-        return @ptrFromInt(@alignOf(FMVideo)); // error will be handeled in err
+        e.* = 1;
+        return @ptrFromInt(@alignOf(FMVideo));
     };   
     const retval: *FMVideo = @ptrCast(v_slice.ptr);
+    
+    retval.gpa = gpa;
+    retval.allocator = allocator;
+    retval.counter = 0;
 
     var ret: i32 = 0;
-    retval.counter = 0;
-    retval.arena = arena;
 
+    // otherwise getting excesive linking from libx264
     avf.av_log_set_level(avf.AV_LOG_FATAL);
+
     var temp_format_ctx: [*c]avf.AVFormatContext = null;
     ret = avf.avformat_alloc_output_context2(&temp_format_ctx, null, "mp4", name);
     if (temp_format_ctx == null or ret < 0) {
@@ -102,9 +130,9 @@ export fn init (name: [*c]u8, width: i32, height: i32, e: *i32) *FMVideo {
         std.process.exit(1);
     }
     // compression rate
-    ret = avo.av_opt_set(retval.codec_ctx.priv_data, "crf", "35", 0);
+    ret = avo.av_opt_set(retval.codec_ctx.priv_data, "crf", "20", 0);
     if (ret < 0) {
-        print("Could not set crf to 35\n", .{});
+        print("Could not set crf to 20\n", .{});
     }
     // [psnr, ssim, grain, zerolatency, fastdecode, animation]
     ret = avo.av_opt_set(retval.codec_ctx.priv_data, "tune", "animation", 0);
@@ -150,11 +178,55 @@ export fn init (name: [*c]u8, width: i32, height: i32, e: *i32) *FMVideo {
         print("Could not write header\n", .{});
         std.process.exit(1);
     }
-    e.* = 0;
+
+    // initializing freetype
+    e.* = ft.FT_Init_FreeType(&retval.ft_lib);
+    if (e.* != 0) {
+        print("Could not initiate freetype library\n", .{});
+        std.process.exit(1);
+    }
+    e.* = ft.FT_New_Face(
+        retval.ft_lib,
+        face_names[@intFromEnum(Face.Regular)],
+        0,
+        &retval.faces[@intFromEnum(Face.Regular)]
+    );
+    if (e.* != 0) {
+        print("Could not open {s} font\n", .{face_names[@intFromEnum(Face.Regular)]});
+        std.process.exit(1);
+    }
+    e.* = ft.FT_New_Face(
+        retval.ft_lib,
+        face_names[@intFromEnum(Face.Maths)],
+        0,
+        &retval.faces[@intFromEnum(Face.Maths)]
+    );
+    if (e.* != 0) {
+        print("Could not open {s} font\n", .{face_names[@intFromEnum(Face.Maths)]});
+        std.process.exit(1);
+    }
+    e.* = ft.FT_New_Face(
+        retval.ft_lib,
+        face_names[@intFromEnum(Face.Code)],
+        0,
+        &retval.faces[@intFromEnum(Face.Code)],
+    );
+    if (e.* != 0) {
+        print("Could not open {s} font\n", .{face_names[@intFromEnum(Face.Code)]});
+        std.process.exit(1);
+    }
+    for (0..3) |i| {
+        for (0..3) |j| {
+            retval.glyphmaps[i][j] = std.AutoHashMap(u32, Bitmap).init(allocator);
+        }
+    }
+    // who knows how memory is allocated in ocaml? 
+    retval.font_size.ptr = font_sizes;
+    retval.font_size.len = 3;
     return retval;
 }
 
-export fn add_frame (v: *FMVideo) void {
+pub export fn add_frame (v: *FMVideo) void {
     v.counter += 1;
     const ret = avc.av_frame_make_writable(v.frame);
     if (ret < 0) {
@@ -162,7 +234,7 @@ export fn add_frame (v: *FMVideo) void {
     }
 }
 
-export fn encode (v: *FMVideo) void {
+pub export fn encode (v: *FMVideo) void {
     var ret: i32 = undefined;
     v.frame.pts = v.counter;
 
@@ -193,7 +265,7 @@ export fn encode (v: *FMVideo) void {
     }
 }
 
-export fn write_and_close (v: *FMVideo) void {
+pub export fn write_and_close (v: *FMVideo) void {
     const ret = avf.av_write_trailer(v.format_ctx);
     if (ret < 0) {
         print("Could not write trailer\n", .{});
@@ -202,9 +274,12 @@ export fn write_and_close (v: *FMVideo) void {
     if (v.format.flags & avf.AVFMT_NOFILE == 0) {
         _ = avf.avio_closep(&v.format_ctx.pb);
     }
-    avc.avcodec_free_context (@ptrCast(&v.codec_ctx));
-    avc.av_frame_free (@ptrCast(&v.frame));
-    avc.av_packet_free (@ptrCast(&v.packet));
+    avc.avcodec_free_context(@ptrCast(&v.codec_ctx));
+    avc.av_frame_free(@ptrCast(&v.frame));
+    avc.av_packet_free(@ptrCast(&v.packet));
     avf.avformat_free_context(@ptrCast(v.format_ctx));
-    v.arena.deinit();
+    switch (v.gpa.deinit()) {
+    .ok => {},
+    .leak => print("Congratulations, you've leaked memory\n", .{}),
+    }
 }

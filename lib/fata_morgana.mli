@@ -41,16 +41,23 @@ module Color : sig
     val rgb_to_yuv : fmcolor -> fmcolor
 end
 
-type fontsize =
-| Small
-| Medium
-| Big
+module Font : sig
+    type size =
+        | Small
+        | Medium
+        | Big
+
+    type font =
+        | Regular
+        | Maths
+        | Code
+end
 
 type fmbox = float * float * float * float
 val middleBox : fmbox
 
 type fmaction =
-| Text of string*fmbox*fontsize
+| Text of string*fmbox*Font.size*Font.font
 | Circle of float*float*int*int*float
 | PixelArt of float*float*int*string
 | Background
@@ -58,7 +65,8 @@ type fmaction =
 val init : string -> int -> int -> (Color.fmcolor list * fmvideo) option
 val write_and_close : (Color.fmcolor list) * fmvideo -> unit
 
-val addText : string -> fmbox -> fontsize -> fmaction list -> fmaction list
+val addText : string -> fmbox -> Font.size -> Font.font ->
+    fmaction list -> fmaction list
 val addPixelArt : float -> float -> int -> string -> fmaction list ->
     fmaction list
 val addBackground : fmaction list -> fmaction list

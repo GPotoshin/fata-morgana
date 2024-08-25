@@ -75,7 +75,17 @@ and colorscheme
 
 
 # To do list
+- function that takes parametres and
+sais how much space line will take
+- tabels (precalculated in ocaml??)
+- font sizing
+- more boxes
+- setting fonts
+- positioning dependind on center etc
+- fix font rendering (border colors are terrible)
 - write latex parser
-- not pessimisation
-- optimization
-- gpu acceleration
+- not pessimisation (add caching)
+- optimization (add simd)
+- gpu acceleration (maybe one day)
+- better errors
+- remove dependence on others libraries
