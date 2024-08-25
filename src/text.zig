@@ -96,8 +96,6 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
         return;
     };
 
-    print("Текст поделён на строки\n", .{});
-
     const p = [2]i32{
         @intFromFloat((x_l+1.0)*width_f/2.0),
         @intFromFloat((1.0-y_t)*height_f/2.0),
