@@ -14,10 +14,11 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(b.path("include"));
     lib.addIncludePath(b.path("include/freetype2"));
     lib.addLibraryPath(b.path("bin"));
+
     lib.linkSystemLibrary("freetype");
-    lib.linkSystemLibrary("libavcodec");
-    lib.linkSystemLibrary("libavformat");
-    lib.linkSystemLibrary("libavutil");
+    lib.linkSystemLibrary("avcodec");
+    lib.linkSystemLibrary("avformat");
+    lib.linkSystemLibrary("avutil");
     lib.linkSystemLibrary("png");
 
     const test_step = b.step("test", "Run unit tests!");
@@ -30,7 +31,7 @@ pub fn build(b: *std.Build) void {
     unit_test.addIncludePath(b.path("include/freetype2"));
     unit_test.addLibraryPath(b.path("bin"));
     unit_test.linkSystemLibrary("freetype");
-    unit_test.linkSystemLibrary("libavcodec");
+    unit_test.linkSystemLibrary("avcodec");
     const run_unit_tests = b.addRunArtifact(unit_test);
     test_step.dependOn(&run_unit_tests.step);
     b.installArtifact(lib);

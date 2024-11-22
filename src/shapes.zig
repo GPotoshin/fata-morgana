@@ -2,19 +2,20 @@ const std = @import("std");
 const FMVideo = @import("essence.zig").FMVideo;
 const maths = @import("maths.zig");
 
-export fn circle (v: *FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32,
+export fn circle (v: ?*FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32,
     duration: f32) void {
+    var state = v.?;
     const p: [2]i32 = .{
-        @intFromFloat((pf[0]+1.0)*@as(f32, @floatFromInt(v.codec_ctx.width))/2.0),
-        @intFromFloat((1.0-pf[1])*@as(f32, @floatFromInt(v.codec_ctx.height))/2.0),
+        @intFromFloat((pf[0]+1.0)*@as(f32, @floatFromInt(state.codec_ctx.width))/2.0),
+        @intFromFloat((1.0-pf[1])*@as(f32, @floatFromInt(state.codec_ctx.height))/2.0),
     };
-    const num: f32 = @floatFromInt(v.codec_ctx.framerate.num);
-    const den: f32 = @floatFromInt(v.codec_ctx.framerate.den);
+    const num: f32 = @floatFromInt(state.codec_ctx.framerate.num);
+    const den: f32 = @floatFromInt(state.codec_ctx.framerate.den);
     const nframes: f32 = duration * num / den;
     const curframe: f32 = t * num / den;
-    const linesize = v.frame.linesize;
-    const height = v.codec_ctx.height;
-    const width = v.codec_ctx.width;
+    const linesize = state.frame.linesize;
+    const height = state.codec_ctx.height;
+    const width = state.codec_ctx.width;
 
     var bgc: [3]u8 = undefined;
     const curangle: f32 = 2.0 * curframe * std.math.pi / nframes;
@@ -31,9 +32,9 @@ export fn circle (v: *FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32,
                 @as(usize, @bitCast(@as(i64, linesize[1]))),
                 @as(usize, @bitCast(@as(i64, linesize[2]))),
             };
-            bgc[0] = v.frame.data[0][y * linesize_u[0] + x];
-            bgc[1] = v.frame.data[1][y/2 * linesize_u[1] + x/2];
-            bgc[2] = v.frame.data[2][y/2 * linesize_u[2] + x/2];
+            bgc[0] = state.frame.data[0][y * linesize_u[0] + x];
+            bgc[1] = state.frame.data[1][y/2 * linesize_u[1] + x/2];
+            bgc[2] = state.frame.data[2][y/2 * linesize_u[2] + x/2];
 
             const x_f: f32 = @floatFromInt(x);
             const y_f: f32 = @floatFromInt(y);
@@ -104,20 +105,21 @@ export fn circle (v: *FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32,
                 continue;
             }
             
-            v.frame.data[0][y * linesize_u[0] + x] = @as(u8, @intFromFloat(sm[0]));
+            state.frame.data[0][y * linesize_u[0] + x] = @as(u8, @intFromFloat(sm[0]));
             if ((x&1)==0 and (y&1)==0) {
-                v.frame.data[1][y/2 * linesize_u[1] + x/2] = @as(u8, @intFromFloat(sm[1]));
-                v.frame.data[2][y/2 * linesize_u[2] + x/2] = @as(u8, @intFromFloat(sm[2]));
+                state.frame.data[1][y/2 * linesize_u[1] + x/2] = @as(u8, @intFromFloat(sm[1]));
+                state.frame.data[2][y/2 * linesize_u[2] + x/2] = @as(u8, @intFromFloat(sm[2]));
             }
         }
     }
 }
 
-export fn paint_background (v: *FMVideo, bgc: [*c]u8) void {
-    const linesize = v.frame.linesize;
-    const data = v.frame.data;
-    const width: usize = @bitCast(@as(i64, v.codec_ctx.width));
-    const height: usize = @bitCast(@as(i64, v.codec_ctx.height));
+pub export fn paint_background (v: ?*FMVideo, bgc: [*c]const u8) void {
+    const state = v.?;
+    const linesize = state.frame.linesize;
+    const data = state.frame.data;
+    const width: usize = @bitCast(@as(i64, state.codec_ctx.width));
+    const height: usize = @bitCast(@as(i64, state.codec_ctx.height));
     const linesize_u: [3]usize = .{
         @as(usize, @bitCast(@as(i64, linesize[0]))),
         @as(usize, @bitCast(@as(i64, linesize[1]))),

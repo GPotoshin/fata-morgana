@@ -5,6 +5,7 @@ const Face = @import("essence.zig").Face;
 const print = std.debug.print;
 const ft = @import("c/freetype.zig");
 const maths = @import("maths.zig");
+var gpa = &@import("essence.zig").gpa;
 
 fn read_with_borders (x: i32, y: i32, w: usize, h: usize, a: ?[*]u8) i32 {
     if (x < 0 or y < 0 or x >= w or y >= h or a == null) {
@@ -78,24 +79,18 @@ fn calculate_borders (out: []u8, in: Bitmap) void {
     }
 }
 
-pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
-    [*c]u32, len: i32, frames: i32, frame: i32, size_type: u8, face_type: u8,
+pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [*c]const u8, str:
+    [*c]const u32, len: i32, frames: i32, frame: i32, size_type: u8, face_type: u8,
     x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
-    const size: i32 = v.font_size[size_type];
+    var state = v.?;
+    const size: i32 = state.font_size[size_type];
+    _ = x_r;
 
-    const width_f: f32 = @floatFromInt(v.codec_ctx.width);
-    const height_f: f32 = @floatFromInt(v.codec_ctx.height);
+    const width_f: f32 = @floatFromInt(state.codec_ctx.width);
+    const height_f: f32 = @floatFromInt(state.codec_ctx.height);
     const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
-    const allocator = v.allocator;
+    const allocator = state.gpa.allocator();
     
-    var line_counter: u32 = 0;
-    print("splitting text\n", .{});
-    const newlines = splitTextInLines(v, x_l, x_r, str, len, face_type, size)
-    orelse {
-        print ("Out of memory (splitTextInLines)\n", .{});
-        return;
-    };
-
     const p = [2]i32{
         @intFromFloat((x_l+1.0)*width_f/2.0),
         @intFromFloat((1.0-y_t)*height_f/2.0),
@@ -107,11 +102,11 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
     };
 
     var bitmap: Bitmap = undefined;
-    var glyphmap = v.glyphmaps[face_type][size_type];
-    const face = v.faces[face_type];
+    var glyphmap = &state.glyphmaps[face_type][size_type];
+    const face = state.faces[face_type];
     var err = ft.FT_Set_Char_Size(face, 0, 16*size, 300, 300);
     if (err != 0) {
-        print ("couldn't set chat size\n", .{});
+        print ("couldn't set char size\n", .{});
         return;
     }
 
@@ -123,19 +118,16 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
     var nlflag = true;
 
     for (0..@bitCast(@as(i64, maths.min(len, tick_number)))) |i| {
-        print("frame number: {}\n", .{i});
         if (pen_y >= bottom_limit) {
             break;
         }
-        print("log: 1\n", .{});
-        if (i == newlines[line_counter]) {
+        if (str[i] == '\n') {
+            print("new line!\n", .{});
             pen_x = 0;
             pen_y += @truncate(face.*.size.*.metrics.height >> 6);
-            line_counter += 1;
             nlflag = true;
             continue;
         }
-        print("log: 2\n", .{});
         const glyph_index = ft.FT_Get_Char_Index(face, str[i]);
         const bm_opt = glyphmap.get(str[i]);
         if (bm_opt == null) {
@@ -149,13 +141,13 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                 print ("error in rendering\n", .{});
                 return;
             }
-            
-            print("log: 3\n", .{});
 
             bitmap.rows = face.*.glyph.*.bitmap.rows;
             bitmap.width = face.*.glyph.*.bitmap.width;
             bitmap.top = face.*.glyph.*.bitmap_top;
             bitmap.left = face.*.glyph.*.bitmap_left;
+            bitmap.advance_x = face.*.glyph.*.advance.x;
+            bitmap.advance_y = face.*.glyph.*.advance.y;
             if (face.*.glyph.*.bitmap.buffer == 0) {
                 bitmap.data = null;
             } else {
@@ -167,18 +159,15 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                 std.mem.copyBackwards(u8, bitmap.data.?[0..bitmap.rows*bitmap.width],
                     face.*.glyph.*.bitmap.buffer[0..bitmap.rows*bitmap.width]);
             }
-            print("log: 4\n", .{});
             glyphmap.put(str[i], bitmap) catch {
                 print("Could not put glyph into hashmap\n", .{});
                 std.process.exit(1);
             };
-            print("glyph is stored\n", .{});
         } else {
             bitmap = bm_opt.?;
         }
 
         if (i > 0 and !nlflag) {
-            print("log: 5\n", .{});
             var kerning: ft.FT_Vector = undefined;
             err = ft.FT_Get_Kerning(face, old_index, glyph_index,
                 ft.FT_KERNING_DEFAULT, &kerning);
@@ -190,17 +179,15 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
         }
 
 
-        print("log: 6\n", .{});
-        const linesize = v.frame.linesize;
+        const linesize = state.frame.linesize;
         if (bitmap.data == null) {
-            pen_x += @as(i32, @truncate(face.*.glyph.*.advance.x>>6));
-            pen_y += @as(i32, @truncate(face.*.glyph.*.advance.y>>6));
+            pen_x += @as(i32, @truncate(bitmap.advance_x>>6));
+            pen_y += @as(i32, @truncate(bitmap.advance_y>>6));
             old_index = glyph_index;
             continue;
         }
         if (i < tick_number-4) {
             // showing letters
-            print("log: 7\n", .{});
             for (0..bitmap.width) |x| {
                 for (0..bitmap.rows) |y| {
                     const m: f32 = @as(f32,
@@ -235,15 +222,14 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                         @floatFromInt(@as(i32, bg[1])),
                         @floatFromInt(@as(i32, bg[2])),
                     };
-                    print("log: 8\n", .{});
                     const yr: i32 = @intFromFloat(cgf[0]*m + bgf[0]*(1.0-m));
                     const ur: i32 = @intFromFloat(cgf[1]*m + bgf[1]*(1.0-m));
                     const vr: i32 = @intFromFloat(cgf[2]*m + bgf[2]*(1.0-m));
-                    v.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
+                    state.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
                     if ((x&1)==0 and (y&1) == 0) {
-                        v.frame.data[1][pos[1]] = @truncate(@as(u32,
+                        state.frame.data[1][pos[1]] = @truncate(@as(u32,
                                 @bitCast(ur)));
-                        v.frame.data[2][pos[2]] = @truncate(@as(u32,
+                        state.frame.data[2][pos[2]] = @truncate(@as(u32,
                                 @bitCast(vr)));
                     }
                 }
@@ -309,12 +295,12 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                         @truncate(y)))));
                     if (std.math.pi/2.0-maths.vector_angle(xf, yf) <= std.math.pi/2.0
                         * angle_coef) {
-                        v.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(
+                        state.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(
                                     yr)));
                         if ((x&1)==0 and (y&1) == 0) {
-                            v.frame.data[1][pos[1]] = @truncate(@as(u32, 
+                            state.frame.data[1][pos[1]] = @truncate(@as(u32, 
                                     @bitCast(ur)));
-                            v.frame.data[2][pos[2]] = @truncate(@as(u32,
+                            state.frame.data[2][pos[2]] = @truncate(@as(u32,
                                     @bitCast(vr)));
                         }
                     }
@@ -385,11 +371,11 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
                     const vr: i32 = @intFromFloat(cgf[2]*filling_coef +
                         fgf[2]*border_coef + bgf[2]*bg_coef);
 
-                    v.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
+                    state.frame.data[0][pos[0]] = @truncate(@as(u32, @bitCast(yr)));
                     if ((x&1)==0 and (y&1) == 0) {
-                        v.frame.data[1][pos[1]] = @truncate(@as(u32, @bitCast(
+                        state.frame.data[1][pos[1]] = @truncate(@as(u32, @bitCast(
                                     ur)));
-                        v.frame.data[2][pos[2]] = @truncate(@as(u32, @bitCast(
+                        state.frame.data[2][pos[2]] = @truncate(@as(u32, @bitCast(
                                     vr)));
                     }
                 }
@@ -403,65 +389,42 @@ pub export fn write_text (v: *FMVideo, cg: [*c]u8, fg: [*c]u8, bg: [*c]u8, str:
     }
 }
 
-// Разбить текст на строки
-// так как возварщается поинтер, то я могу возвращать зиговские конструкции
-fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32, 
-    str: [*c]u32, len: i32, face_type: u8, size: i32) ?[]u32 {
+pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32, 
+    str: [*]u32, len: i32, face_type: u8, size: u8) void {
+    const state = v.?;
     const window_width: i32 = @intFromFloat((x_r-x_l)*@as(f32,
-            @floatFromInt(v.codec_ctx.width))/2.0);
-    const allocator = v.allocator;
+            @floatFromInt(state.codec_ctx.width))/2.0);
 
-    var last_pos: u32 = 0;
-    var retval = allocator.alloc(u32, 8) catch {
-        print ("can't allocate text spliter", .{});
-        return null;
-    };
-
-    const face = v.faces[face_type];
+    const face = state.faces[face_type];
 
     var err = ft.FT_Set_Char_Size(face, 0, 16*size, 300, 300);
     if (err != 0) {
         print ("couldn't set chat size\n", .{});
-        allocator.free(retval);
-        return null;
+        std.process.exit(1);
     }
 
-    // preparing for maths
     var old_index: ft.FT_UInt = 0;
     var pen_x: i32 = 0;
     var i: u32 = 0;
     var last_space: u32 = 0;
     var new_line: bool = true;
     while (i < len) : (i += 1) {
-        // print ("{}\n", .{i});
         if (str[i] == 32) {
-            // print ("?\n", .{});
             last_space = i;
         }
-        // loading glyph
         const glyph_index = ft.FT_Get_Char_Index(face, str[i]);
-        // adding kerning if not on new line
         if (!new_line) {
             var kerning: ft.FT_Vector = undefined;
             err = ft.FT_Get_Kerning(face, old_index, glyph_index, ft.FT_KERNING_DEFAULT, &kerning);
             if (err != 0) {
                 print ("error in defining kerning\n", .{});
-                allocator.free(retval);
-                return null;
+                std.process.exit(1);
             }
             pen_x += @truncate(kerning.x >> 6);
         }
         new_line = false;
         if (pen_x >= window_width) {
-            if (last_pos == retval.len) {
-                retval = allocator.realloc(retval, retval.len+8) catch {
-                    print ("could not relocate memory", .{});
-                    allocator.free(retval);
-                    return null;
-                };
-            }
-            retval[last_pos] = last_space;
-            last_pos += 1;
+            str[last_space] = '\n';
             i = last_space + 1;
             new_line = true;
             pen_x = 0;
@@ -469,5 +432,4 @@ fn splitTextInLines (v: *FMVideo, x_l: f32, x_r: f32,
         old_index = glyph_index;
         pen_x += @truncate(face.*.glyph.*.advance.x >> 6); 
     }
-    return retval;
 }

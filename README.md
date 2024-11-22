@@ -75,6 +75,7 @@ and colorscheme
 
 
 # To do list
+- move from dynamic library to static
 - function that takes parametres and
 sais how much space line will take
 - tabels (precalculated in ocaml??)

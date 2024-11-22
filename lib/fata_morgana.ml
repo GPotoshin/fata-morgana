@@ -14,6 +14,9 @@ let add_frame =
     foreign "add_frame" (fmvideo @-> (returning void))
 let encode =
     foreign "encode" (fmvideo @-> (returning void))
+let add_line_splits =
+    foreign "add_line_splits" (fmvideo @-> float @-> float @-> ptr uint32_t
+    @-> int @-> uint8_t @-> uint8_t @-> (returning void))
 let write_and_close v =
     let (_, video) = v in
     cwrite_and_close video
@@ -240,6 +243,12 @@ type fmaction =
     | PixelArt of float*float*int*string
     | Background
 
+type raw_action =
+    | RawText of (Unsigned.uint8 ptr)*fmbox*Unsigned.uint8*Unsigned.uint8
+    | RawCircle of float*float*int*int*float
+    | RawPixelArt of float*float*int*string
+    | RawBackground of string
+
 let (<~) f g = g (f)
 
 let addText s box size font = (fun scene ->
@@ -324,12 +333,22 @@ let do_action v acc counter =
 
 (*is it what slows down the programm?*)
 let visualise_scene scene action_list time =
-    let (_, v) = scene in
+    let (colors, v) = scene in
     let duration = int_of_float (time*.25.) in
+    (* prepassing *)
+    let preprocessed_list = List.map ( function action ->
+        match action with
+        | Background -> (match find_color dark_0 colors with
+            | None -> print_endline "can't find color dark0"; exit(1);
+            | Some(c) -> RawBackground c)
+        | PixelArt (x,y,scale,name) -> 
+    ) action_list
+    in
+    (* frame loop *)
     for counter = 0 to duration do
         add_frame v;
-        let rec process_actions list =
-            match list with
+        let rec process_actions sq =
+            match sq with
             | first :: rest ->
                 do_action scene first counter;
                 process_actions rest
