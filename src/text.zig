@@ -79,28 +79,11 @@ fn calculate_borders (out: []u8, in: Bitmap) void {
     }
 }
 
-pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [*c]const u8, str:
-    [*c]const u32, len: i32, frames: i32, frame: i32, size_type: u8, face_type: u8,
-    x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
-    var state = v.?;
-    const size: i32 = state.font_size[size_type];
-    _ = x_r;
+pub export fn render_glyphs (state: ?*FMVideo, text: [*c]const u32, len: u32,
+    size_type: u8, face_type: u8) void {
 
-    const width_f: f32 = @floatFromInt(state.codec_ctx.width);
-    const height_f: f32 = @floatFromInt(state.codec_ctx.height);
-    const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
-    const allocator = state.gpa.allocator();
-    
-    const p = [2]i32{
-        @intFromFloat((x_l+1.0)*width_f/2.0),
-        @intFromFloat((1.0-y_t)*height_f/2.0),
-    };
-    const cgf = [3]f32{
-        @floatFromInt(@as(i32, cg[0])),
-        @floatFromInt(@as(i32, cg[1])),
-        @floatFromInt(@as(i32, cg[2])),
-    };
-
+    const allocator = state.?.allocator; // public allocator or arenas?
+    const size: u32 = state.font_size[size_type];
     var bitmap: Bitmap = undefined;
     var glyphmap = &state.glyphmaps[face_type][size_type];
     const face = state.faces[face_type];
@@ -110,27 +93,10 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
         return;
     }
 
-    var old_index: ft.FT_UInt = 0;
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    const tick = @as(f32, @floatFromInt(frames))/@as(f32, @floatFromInt(len+4));
-    const tick_number: i32 = @intFromFloat(@as(f32, @floatFromInt(frame))/tick);
-    var nlflag = true;
-
-    for (0..@bitCast(@as(i64, maths.min(len, tick_number)))) |i| {
-        if (pen_y >= bottom_limit) {
-            break;
-        }
-        if (str[i] == '\n') {
-            print("new line!\n", .{});
-            pen_x = 0;
-            pen_y += @truncate(face.*.size.*.metrics.height >> 6);
-            nlflag = true;
-            continue;
-        }
-        const glyph_index = ft.FT_Get_Char_Index(face, str[i]);
-        const bm_opt = glyphmap.get(str[i]);
+    for (0..len) |i| {
+        const bm_opt = glyphmap.get(text[i]);
         if (bm_opt == null) {
+            const glyph_index = ft.FT_Get_Char_Index(face, text[i]);
             err = ft.FT_Load_Glyph(face, glyph_index, ft.FT_LOAD_DEFAULT);
             if (err != 0) {
                 print ("couldn't load a glyph\n", .{});
@@ -151,7 +117,7 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
             if (face.*.glyph.*.bitmap.buffer == 0) {
                 bitmap.data = null;
             } else {
-                bitmap.data = (allocator.alloc(u8, bitmap.rows*bitmap.width)
+                bitmap.data = (allocator.alloc(u8, bitmap.rows*bitmap.width) // @ToChange: Arena?
                 catch {
                     print("no memory for glyph map\n", .{});
                     std.process.exit(1);
@@ -163,8 +129,49 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
                 print("Could not put glyph into hashmap\n", .{});
                 std.process.exit(1);
             };
-        } else {
-            bitmap = bm_opt.?;
+        }
+    }
+}
+
+pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [*c]const u8, str:
+    [*c]const u32, len: u32, frames: u32, frame: u32, size_type: u8, face_type: u8,
+    x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
+    var state = v.?;
+    const size: u32 = state.font_size[size_type];
+    _ = x_r;
+
+    const width_f: f32 = @floatFromInt(state.codec_ctx.width);
+    const height_f: f32 = @floatFromInt(state.codec_ctx.height);
+    const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
+    const allocator = state.gpa.allocator();
+    
+    const p = [2]i32{
+        @intFromFloat((x_l+1.0)*width_f/2.0),
+        @intFromFloat((1.0-y_t)*height_f/2.0),
+    };
+    const cgf = [3]f32{
+        @floatFromInt(@as(i32, cg[0])),
+        @floatFromInt(@as(i32, cg[1])),
+        @floatFromInt(@as(i32, cg[2])),
+    };
+
+
+    var old_index: ft.FT_UInt = 0;
+    var pen_x: i32 = 0;
+    var pen_y: i32 = 0;
+    const tick = @as(f32, @floatFromInt(frames))/@as(f32, @floatFromInt(len+4));
+    const tick_number: i32 = @intFromFloat(@as(f32, @floatFromInt(frame))/tick);
+    var nlflag = true;
+
+    for (0..@bitCast(@as(i64, maths.min(len, tick_number)))) |i| {
+        if (pen_y >= bottom_limit) {
+            break;
+        }
+        if (str[i] == '\n') {
+            pen_x = 0;
+            pen_y += @truncate(face.*.size.*.metrics.height >> 6); // @ToChange: it should be taken from side strucutre
+            nlflag = true;
+            continue;
         }
 
         if (i > 0 and !nlflag) {
@@ -390,7 +397,7 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
 }
 
 pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32, 
-    str: [*]u32, len: i32, face_type: u8, size: u8) void {
+    str: [*]u32, len: i32, size_type: u8, face_type: u8) void {
     const state = v.?;
     const window_width: i32 = @intFromFloat((x_r-x_l)*@as(f32,
             @floatFromInt(state.codec_ctx.width))/2.0);
@@ -433,3 +440,4 @@ pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32,
         pen_x += @truncate(face.*.glyph.*.advance.x >> 6); 
     }
 }
+
