@@ -24,6 +24,15 @@ pub const Bitmap = struct {
     advance_x: i64,
     advance_y: i64,
 };
+
+// Refactoring plan:
+// * change allocation stretegy to arena
+//   > allocation
+//   > deallocation +
+// * debug text prossessing function
+//   > as I remeber there advances are not taken from precomputed bitmaps
+// * read through all the code
+//   > the refactor stratagy is to refactor 'block par block'[fr]
  
 pub const FMVideo = struct {
     codec: *const avc.AVCodec,
@@ -35,8 +44,8 @@ pub const FMVideo = struct {
     stream: *avf.AVStream,
     counter: u32,
     
-    gpa: std.heap.GeneralPurposeAllocator(.{}),
-    allocator: std.mem.Allocator,
+    scene_arena: std.heap.ArenaAllocator,
+    programm_arena: std.heap.ArenaAllocator,
 
     // font fields
     font_size: []u8,
@@ -48,17 +57,16 @@ pub const FMVideo = struct {
 var framework_state: FMVideo = undefined;
 
 pub export fn get_allocator (v: ?*FMVideo) *std.mem.Allocator {
-    return &v.?.allocator;
+    return &v.?.arena.allocator();
 }
 
-// OCaml interface should deal with a copy of an ob
-/// `init` function does initiation of all libraries that 
 pub export fn init(name: [*:0]u8, width: i32, height: i32, face_names: [*][*:0]u8,
     font_sizes: [*]u8, e: *i32) ?*FMVideo {
-    // refreshing gpa data to reuse variable
-    framework_state.gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = framework_state.gpa.allocator();
-    framework_state.allocator = allocator;
+    framework_state.arena = std.heap.ArenaAllocator.init(std.heap.page_alloctor);
+
+    const programm_allocator = framework_state.programm_arena.allocator();
+    const scene_allocator = framework_state.scene_arena.allocator();
+
     framework_state.counter = 0;
 
     var ret: i32 = 0;
@@ -219,7 +227,7 @@ pub export fn init(name: [*:0]u8, width: i32, height: i32, face_names: [*][*:0]u
     }
     for (0..3) |i| {
         for (0..3) |j| {
-            framework_state.glyphmaps[i][j] = std.AutoHashMap(u32, Bitmap).init(allocator);
+            framework_state.glyphmaps[i][j] = std.AutoHashMap(u32, Bitmap).init(programm_allocator);
         }
     }
     // who knows how memory is allocated in ocaml? 
@@ -271,7 +279,9 @@ pub export fn encode (v: ?*FMVideo) void {
 
 pub export fn write_and_close (v: ?*FMVideo) void {
     var state = v.?;
-    const allocator = state.gpa.allocator();
+    const arena = state.scene_arena;
+    arena.deinit();
+
     const ret = avf.av_write_trailer(state.format_ctx);
     if (ret < 0) {
         print("Could not write trailer\n", .{});
@@ -280,28 +290,10 @@ pub export fn write_and_close (v: ?*FMVideo) void {
     if (state.format.flags & avf.AVFMT_NOFILE == 0) {
         _ = avf.avio_closep(&state.format_ctx.pb);
     }
-    for (0..3) |i| {
-        for (0..3) |j| {
-            var map = state.glyphmaps[i][j];
-            var it = map.iterator(); 
-
-            while (it.next()) |entity| {
-                const val = entity.value_ptr;
-                const size: u32 = val.rows*val.width;
-                if (val.data) |data| {
-                    allocator.free(data[0..size]);
-                }
-            }
-            map.clearAndFree();
-        }
-    }
             
+    // why cstdlib allocator ??
     avc.avcodec_free_context(@ptrCast(&state.codec_ctx));
     avc.av_frame_free(@ptrCast(&state.frame));
     avc.av_packet_free(@ptrCast(&state.packet));
     avf.avformat_free_context(@ptrCast(state.format_ctx));
-    switch (state.gpa.deinit()) {
-        .ok => {},
-        .leak => print("Congratulations, you've leaked memory\n", .{}),
-    }
 }

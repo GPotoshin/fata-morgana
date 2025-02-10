@@ -125,7 +125,7 @@ pub export fn render_glyphs (state: ?*FMVideo, text: [*c]const u32, len: u32,
                 std.mem.copyBackwards(u8, bitmap.data.?[0..bitmap.rows*bitmap.width],
                     face.*.glyph.*.bitmap.buffer[0..bitmap.rows*bitmap.width]);
             }
-            glyphmap.put(str[i], bitmap) catch {
+            glyphmap.put(text[i], bitmap) catch {
                 print("Could not put glyph into hashmap\n", .{});
                 std.process.exit(1);
             };
@@ -154,7 +154,6 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
         @floatFromInt(@as(i32, cg[1])),
         @floatFromInt(@as(i32, cg[2])),
     };
-
 
     var old_index: ft.FT_UInt = 0;
     var pen_x: i32 = 0;
