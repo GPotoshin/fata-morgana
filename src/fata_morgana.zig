@@ -64,10 +64,10 @@ test "showing text" {
     const fg = rgb_to_yuv([_]u8{0x73,0x49,0xa0});
     const bg = rgb_to_yuv([_]u8{0x1f,0xf7,0x7d});
 
-    const v = ft.init(@constCast("showing_text.mp4"), 360, 270, @ptrCast(@constCast(&face_names)),
+    const v = ft.init(@constCast("showing_text.mp4"), 2560, 1600, @ptrCast(@constCast(&face_names)),
         @ptrCast(@constCast(&[_]u32{16*16,16*32,16*64})), &e); 
-    tx.add_line_splits(v, -0.4, 0.4, &text, text.len, 2, 0);
-    tx.render_glyphs(v, &text, text.len, 2, 0);
+    tx.render_glyphs(v, &text, text.len, 1, 0);
+    tx.add_line_splits(v, -0.4, 0.4, &text, text.len, 1, 0);
     for (0..100) |frame_num| {
         ft.add_frame(v);
         sh.paint_background(v, @ptrCast(&bg));
@@ -80,7 +80,7 @@ test "showing text" {
             text.len,
             100,
             @intCast(frame_num),
-            2,
+            1,
             0,
             -0.4, 0.4, -0.4, 0.4);
         ft.encode(v);

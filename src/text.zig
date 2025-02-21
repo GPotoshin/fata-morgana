@@ -79,6 +79,52 @@ fn calculate_borders (in: Bitmap) void {
     }
 }
 
+fn load_glyph(allocator: std.mem.Allocator, face: ft.FT_Face, key: u32, glyphmap: *std.AutoHashMap(u32, Bitmap)) void {
+    var bitmap: Bitmap = undefined;
+    const glyph_index = ft.FT_Get_Char_Index(face, key);
+    var err = ft.FT_Load_Glyph(face, glyph_index, ft.FT_LOAD_DEFAULT);
+    if (err != 0) {
+        print ("couldn't load a glyph\n", .{});
+        std.process.exit(1);
+    }
+    err = ft.FT_Render_Glyph(face.*.glyph, ft.FT_RENDER_MODE_NORMAL);
+    if (err != 0) {
+        print ("error in rendering\n", .{});
+        return;
+    }
+
+
+    bitmap.rows = face.*.glyph.*.bitmap.rows;
+    bitmap.width = face.*.glyph.*.bitmap.width;
+    bitmap.top = face.*.glyph.*.bitmap_top;
+    bitmap.left = face.*.glyph.*.bitmap_left;
+    bitmap.advance_x = face.*.glyph.*.advance.x;
+    bitmap.advance_y = face.*.glyph.*.advance.y;
+    if (face.*.glyph.*.bitmap.buffer == 0) {
+        bitmap.data = null;
+        bitmap.borders = null;
+    } else {
+        bitmap.data = allocator.alloc(u8, bitmap.rows*bitmap.width)
+            catch {
+                print("no memory for glyph map\n", .{});
+                std.process.exit(1);
+            };
+        std.mem.copyBackwards(u8, bitmap.data.?[0..bitmap.rows*bitmap.width],
+            face.*.glyph.*.bitmap.buffer[0..bitmap.rows*bitmap.width]);
+        const borders_size = (bitmap.width+2)*(bitmap.rows+2);
+        bitmap.borders = allocator.alloc(u8, borders_size) catch {
+            print ("Out of memory for borders\n", .{});
+            std.process.exit(1);
+        };
+        calculate_borders (bitmap);
+    }
+    glyphmap.put(key, bitmap) catch {
+        print("Could not put glyph into hashmap\n", .{});
+        std.process.exit(1);
+    };
+
+}
+
 
 /// Render all glyphs from string to a bitmap corresponding to the right face
 /// family and right size.
@@ -89,10 +135,9 @@ pub export fn render_glyphs (opt_state: ?*FMVideo, text: [*c]const u32, len: u32
 
     const allocator = state.scene_arena.allocator();
     const size: u32 = state.font_size[size_type];
-    var bitmap: Bitmap = undefined;
     var glyphmap = &state.glyphmaps[size_type][face_type];
     const face = state.faces[face_type];
-    var err = ft.FT_Set_Char_Size(face, 0, size, 300, 300);
+    const err = ft.FT_Set_Char_Size(face, 0, size, 300, 300);
     if (err != 0) {
         print ("couldn't set char size\n", .{});
         return;
@@ -101,49 +146,10 @@ pub export fn render_glyphs (opt_state: ?*FMVideo, text: [*c]const u32, len: u32
     for (0..len) |i| {
         const bm_opt = glyphmap.get(text[i]);
         if (bm_opt == null) {
-            const glyph_index = ft.FT_Get_Char_Index(face, text[i]);
-            err = ft.FT_Load_Glyph(face, glyph_index, ft.FT_LOAD_DEFAULT);
-            if (err != 0) {
-                print ("couldn't load a glyph\n", .{});
-                std.process.exit(1);
-            }
-            err = ft.FT_Render_Glyph(face.*.glyph, ft.FT_RENDER_MODE_NORMAL);
-            if (err != 0) {
-                print ("error in rendering\n", .{});
-                return;
-            }
-
-
-            bitmap.rows = face.*.glyph.*.bitmap.rows;
-            bitmap.width = face.*.glyph.*.bitmap.width;
-            bitmap.top = face.*.glyph.*.bitmap_top;
-            bitmap.left = face.*.glyph.*.bitmap_left;
-            bitmap.advance_x = face.*.glyph.*.advance.x;
-            bitmap.advance_y = face.*.glyph.*.advance.y;
-            if (face.*.glyph.*.bitmap.buffer == 0) {
-                bitmap.data = null;
-                bitmap.borders = null;
-            } else {
-                bitmap.data = allocator.alloc(u8, bitmap.rows*bitmap.width)
-                catch {
-                    print("no memory for glyph map\n", .{});
-                    std.process.exit(1);
-                };
-                std.mem.copyBackwards(u8, bitmap.data.?[0..bitmap.rows*bitmap.width],
-                    face.*.glyph.*.bitmap.buffer[0..bitmap.rows*bitmap.width]);
-                const borders_size = (bitmap.width+2)*(bitmap.rows+2);
-                bitmap.borders = allocator.alloc(u8, borders_size) catch {
-                    print ("Out of memory for borders\n", .{});
-                    std.process.exit(1);
-                };
-                calculate_borders (bitmap);
-            }
-            glyphmap.put(text[i], bitmap) catch {
-                print("Could not put glyph into hashmap\n", .{});
-                std.process.exit(1);
-            };
+            load_glyph(allocator, face, text[i], glyphmap);
         }
     }
+    load_glyph(allocator, face, '\n', glyphmap);
 }
 
 pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [*c]const u8, str:
@@ -190,11 +196,11 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
         }
 
         // all the values must have been precomputed
-        const bitmap = glyphmap.get(str[i]) orelse unreachable;
 
+        const bitmap = glyphmap.get(str[i]) orelse unreachable;
         if (str[i] == '\n') {
             pen_x = 0;
-            pen_y += @truncate(bitmap.advance_y >> 6); // @Remark: it used to be metrix.height, so
+            pen_y += @truncate(face.*.size.*.metrics.height >> 6); // @Remark: it used to be metrix.height, so
                                                        // new lines may be not working correctly
             nlflag = true;
             continue;
@@ -354,8 +360,8 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
                         / 255.0;
                     const bg_coef: f32 = 1.0 - filling_coef - border_coef;
 
-                    const bmtop: i32 = face.*.glyph.*.bitmap_top;
-                    const bmleft: i32 = face.*.glyph.*.bitmap_left;
+                    const bmtop: i32 = bitmap.top;
+                    const bmleft: i32 = bitmap.left;
                     const linesize_0: i32 = linesize[0]; 
                     const linesize_1: i32 = linesize[1]; 
                     const linesize_2: i32 = linesize[2]; 
@@ -403,8 +409,8 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
                 }
             }
         }
-        pen_x += @as(i32, @truncate(face.*.glyph.*.advance.x>>6));
-        pen_y += @as(i32, @truncate(face.*.glyph.*.advance.y>>6));
+        pen_x += @as(i32, @truncate(bitmap.advance_x>>6));
+        pen_y += @as(i32, @truncate(bitmap.advance_y>>6));
         old_index = glyph_index;
         nlflag = false;
     }
@@ -418,6 +424,7 @@ pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32,
 
     const face = state.faces[face_type];
     const size = state.font_size[size_type];
+    const map = state.glyphmaps[size_type][face_type];
 
     var err = ft.FT_Set_Char_Size(face, 0, size, 300, 300);
     if (err != 0) {
@@ -430,7 +437,13 @@ pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32,
     var i: u32 = 0;
     var last_space: u32 = 0;
     var new_line: bool = true;
+    var bitmap: Bitmap = undefined;
+    print("window_width: {}\n", .{window_width});
     while (i < len) : (i += 1) {
+        bitmap = map.get(str[i]) orelse {
+            print("failed at {} with code {}\n", .{i, str[i]});
+            unreachable;
+        };
         if (str[i] == 32) {
             last_space = i;
         }
@@ -452,7 +465,7 @@ pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32,
             pen_x = 0;
         }
         old_index = glyph_index;
-        pen_x += @truncate(face.*.glyph.*.advance.x >> 6); 
+        pen_x += @truncate(bitmap.advance_x >> 6); 
     }
 }
 
