@@ -13,7 +13,6 @@ pub fn build(b: *std.Build) void {
 
     lib.addIncludePath(b.path("include"));
     lib.addIncludePath(b.path("include/freetype2"));
-    lib.addLibraryPath(b.path("bin"));
 
     lib.linkSystemLibrary("freetype");
     lib.linkSystemLibrary("avcodec");
@@ -29,10 +28,13 @@ pub fn build(b: *std.Build) void {
     
     unit_test.addIncludePath(b.path("include"));
     unit_test.addIncludePath(b.path("include/freetype2"));
-    unit_test.addLibraryPath(b.path("bin"));
     unit_test.linkSystemLibrary("freetype");
     unit_test.linkSystemLibrary("avcodec");
+    unit_test.linkSystemLibrary("avformat");
+    unit_test.linkSystemLibrary("avutil");
+    unit_test.linkSystemLibrary("png");
     const run_unit_tests = b.addRunArtifact(unit_test);
     test_step.dependOn(&run_unit_tests.step);
+
     b.installArtifact(lib);
 }

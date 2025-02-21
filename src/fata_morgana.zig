@@ -65,8 +65,9 @@ test "showing text" {
     const bg = rgb_to_yuv([_]u8{0x1f,0xf7,0x7d});
 
     const v = ft.init(@constCast("showing_text.mp4"), 360, 270, @ptrCast(@constCast(&face_names)),
-        @ptrCast(@constCast(&[_]u8{16,32,64})), &e); 
+        @ptrCast(@constCast(&[_]u32{16*16,16*32,16*64})), &e); 
     tx.add_line_splits(v, -0.4, 0.4, &text, text.len, 2, 0);
+    tx.render_glyphs(v, &text, text.len, 2, 0);
     for (0..100) |frame_num| {
         ft.add_frame(v);
         sh.paint_background(v, @ptrCast(&bg));

@@ -7,7 +7,7 @@ const ft = @import("c/freetype.zig");
 const maths = @import("maths.zig");
 var gpa = &@import("essence.zig").gpa;
 
-fn read_with_borders (x: i32, y: i32, w: usize, h: usize, a: ?[*]u8) i32 {
+fn read_with_borders (x: i32, y: i32, w: usize, h: usize, a: ?[]u8) i32 {
     if (x < 0 or y < 0 or x >= w or y >= h or a == null) {
         return 0;
     } else {
@@ -26,7 +26,7 @@ fn print_box (a: []u8, w: usize, h: usize) void {
     }
 }
 
-fn calculate_borders (out: []u8, in: Bitmap) void {
+fn calculate_borders (in: Bitmap) void {
     var M: i32 = 0;
     for (0..in.width+2) |x| {
         for (0..in.rows+2) |y| {
@@ -64,30 +64,35 @@ fn calculate_borders (out: []u8, in: Bitmap) void {
             const uval: u32 = @bitCast(ival);
             const cval: u8  = @truncate(uval);
 
-            out[y*(in.width+2) + x] = cval;
-            M = maths.max(out[y*(in.width+2) + x], M);
+            in.borders.?[y*(in.width+2) + x] = cval;
+            M = @max(in.borders.?[y*(in.width+2) + x], M);
         }
     }
     for (0..in.width+2) |x| {
         for (0..in.rows+2) |y| {
             const Mf: f32 = @floatFromInt(M);
-            const val: f32 = @floatFromInt(out[y*(in.width+2)+x]);
+            const val: f32 = @floatFromInt(in.borders.?[y*(in.width+2)+x]);
             const nval: f32 = val * 255.0/Mf;
-            out[y*(in.width+2)+x] = @truncate(@as(u32, @bitCast(
+            in.borders.?[y*(in.width+2)+x] = @truncate(@as(u32, @bitCast(
                         @as(i32, @intFromFloat(nval)))));
         }
     }
 }
 
-pub export fn render_glyphs (state: ?*FMVideo, text: [*c]const u32, len: u32,
+
+/// Render all glyphs from string to a bitmap corresponding to the right face
+/// family and right size.
+pub export fn render_glyphs (opt_state: ?*FMVideo, text: [*c]const u32, len: u32,
     size_type: u8, face_type: u8) void {
 
-    const allocator = state.?.allocator; // public allocator or arenas?
+    const state = opt_state.?;
+
+    const allocator = state.scene_arena.allocator();
     const size: u32 = state.font_size[size_type];
     var bitmap: Bitmap = undefined;
-    var glyphmap = &state.glyphmaps[face_type][size_type];
+    var glyphmap = &state.glyphmaps[size_type][face_type];
     const face = state.faces[face_type];
-    var err = ft.FT_Set_Char_Size(face, 0, 16*size, 300, 300);
+    var err = ft.FT_Set_Char_Size(face, 0, size, 300, 300);
     if (err != 0) {
         print ("couldn't set char size\n", .{});
         return;
@@ -108,6 +113,7 @@ pub export fn render_glyphs (state: ?*FMVideo, text: [*c]const u32, len: u32,
                 return;
             }
 
+
             bitmap.rows = face.*.glyph.*.bitmap.rows;
             bitmap.width = face.*.glyph.*.bitmap.width;
             bitmap.top = face.*.glyph.*.bitmap_top;
@@ -116,14 +122,21 @@ pub export fn render_glyphs (state: ?*FMVideo, text: [*c]const u32, len: u32,
             bitmap.advance_y = face.*.glyph.*.advance.y;
             if (face.*.glyph.*.bitmap.buffer == 0) {
                 bitmap.data = null;
+                bitmap.borders = null;
             } else {
-                bitmap.data = (allocator.alloc(u8, bitmap.rows*bitmap.width) // @ToChange: Arena?
+                bitmap.data = allocator.alloc(u8, bitmap.rows*bitmap.width)
                 catch {
                     print("no memory for glyph map\n", .{});
                     std.process.exit(1);
-                }).ptr;
+                };
                 std.mem.copyBackwards(u8, bitmap.data.?[0..bitmap.rows*bitmap.width],
                     face.*.glyph.*.bitmap.buffer[0..bitmap.rows*bitmap.width]);
+                const borders_size = (bitmap.width+2)*(bitmap.rows+2);
+                bitmap.borders = allocator.alloc(u8, borders_size) catch {
+                    print ("Out of memory for borders\n", .{});
+                    std.process.exit(1);
+                };
+                calculate_borders (bitmap);
             }
             glyphmap.put(text[i], bitmap) catch {
                 print("Could not put glyph into hashmap\n", .{});
@@ -134,16 +147,25 @@ pub export fn render_glyphs (state: ?*FMVideo, text: [*c]const u32, len: u32,
 }
 
 pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [*c]const u8, str:
-    [*c]const u32, len: u32, frames: u32, frame: u32, size_type: u8, face_type: u8,
+    [*c]const u32, len: i32, frames: u32, frame: u32, size_type: u8, face_type: u8,
     x_l: f32, x_r: f32, y_l: f32, y_t: f32) void {
     var state = v.?;
     const size: u32 = state.font_size[size_type];
     _ = x_r;
 
+    const glyphmap = state.glyphmaps[size_type][face_type];
+    const face = state.faces[face_type];
+
+    // remove that dependecy one day
+    var err = ft.FT_Set_Char_Size(face, 0, size, 300, 300);
+    if (err != 0) {
+        print ("couldn't set chat size\n", .{});
+        std.process.exit(1);
+    }
+
     const width_f: f32 = @floatFromInt(state.codec_ctx.width);
     const height_f: f32 = @floatFromInt(state.codec_ctx.height);
     const bottom_limit: i32 = @intFromFloat((1.0-y_l)/2.0*width_f);
-    const allocator = state.gpa.allocator();
     
     const p = [2]i32{
         @intFromFloat((x_l+1.0)*width_f/2.0),
@@ -162,20 +184,27 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
     const tick_number: i32 = @intFromFloat(@as(f32, @floatFromInt(frame))/tick);
     var nlflag = true;
 
-    for (0..@bitCast(@as(i64, maths.min(len, tick_number)))) |i| {
+    for (0..@bitCast(@as(i64, @min(len, tick_number)))) |i| {
         if (pen_y >= bottom_limit) {
             break;
         }
+
+        // all the values must have been precomputed
+        const bitmap = glyphmap.get(str[i]) orelse unreachable;
+
         if (str[i] == '\n') {
             pen_x = 0;
-            pen_y += @truncate(face.*.size.*.metrics.height >> 6); // @ToChange: it should be taken from side strucutre
+            pen_y += @truncate(bitmap.advance_y >> 6); // @Remark: it used to be metrix.height, so
+                                                       // new lines may be not working correctly
             nlflag = true;
             continue;
         }
 
+        const glyph_index = ft.FT_Get_Char_Index(face, str[i]);
+
         if (i > 0 and !nlflag) {
             var kerning: ft.FT_Vector = undefined;
-            err = ft.FT_Get_Kerning(face, old_index, glyph_index,
+            err = ft.FT_Get_Kerning(face, old_index, glyph_index, // can't the kerning be precomputed?
                 ft.FT_KERNING_DEFAULT, &kerning);
             if (err != 0) {
                 print ("error in defining kerning\n", .{});
@@ -184,7 +213,6 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
             pen_x += @truncate(kerning.x >> 6);
         }
 
-
         const linesize = state.frame.linesize;
         if (bitmap.data == null) {
             pen_x += @as(i32, @truncate(bitmap.advance_x>>6));
@@ -192,8 +220,9 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
             old_index = glyph_index;
             continue;
         }
+        const borders = bitmap.borders.?;
         if (i < tick_number-4) {
-            // showing letters
+            // showing letter
             for (0..bitmap.width) |x| {
                 for (0..bitmap.rows) |y| {
                     const m: f32 = @as(f32,
@@ -243,12 +272,6 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
         } else if (i > tick_number-4 and i <= tick_number) {
             // print("case 1\n", .{});
             //calculating borders
-            const borders_size: usize = (bitmap.width+2)*(bitmap.rows+2);
-            const borders: []u8 = allocator.alloc(u8, borders_size) catch {
-                print ("Out of memory for borders\n", .{});
-                return;
-            };
-            calculate_borders (borders, bitmap);
             for (0..bitmap.width+2) |x| {
                 for (0..bitmap.rows+2) |y| {
                     const angle_coef: f32 = (@as(f32, @floatFromInt(frame)) -
@@ -312,14 +335,7 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
                     }
                 }
             }
-            allocator.free(borders);
         } else if (i == tick_number-4) {
-            const borders_size = (bitmap.width+2)*(bitmap.rows+2);
-            const borders = allocator.alloc(u8, borders_size) catch {
-                print ("Out of memory for borders\n", .{});
-                return;
-            };
-            calculate_borders (borders, bitmap);
             for (0..bitmap.width+2) |x| {
                 for (0..bitmap.rows+2) |y| {
                     const x_i: i32 = @bitCast(@as(u32, @truncate(x)));
@@ -386,7 +402,6 @@ pub export fn write_text(v: ?*FMVideo, cg: [*c]const u8, fg: [*c]const u8, bg: [
                     }
                 }
             }
-            allocator.free(borders);
         }
         pen_x += @as(i32, @truncate(face.*.glyph.*.advance.x>>6));
         pen_y += @as(i32, @truncate(face.*.glyph.*.advance.y>>6));
@@ -402,8 +417,9 @@ pub export fn add_line_splits(v: ?*FMVideo, x_l: f32, x_r: f32,
             @floatFromInt(state.codec_ctx.width))/2.0);
 
     const face = state.faces[face_type];
+    const size = state.font_size[size_type];
 
-    var err = ft.FT_Set_Char_Size(face, 0, 16*size, 300, 300);
+    var err = ft.FT_Set_Char_Size(face, 0, size, 300, 300);
     if (err != 0) {
         print ("couldn't set chat size\n", .{});
         std.process.exit(1);

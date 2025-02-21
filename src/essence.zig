@@ -16,7 +16,8 @@ pub const Face = enum {
 };
 
 pub const Bitmap = struct {
-    data: ?[*]u8,
+    data: ?[]u8,
+    borders: ?[]u8,
     rows: u32,
     width: u32,
     top: i32,
@@ -45,10 +46,9 @@ pub const FMVideo = struct {
     counter: u32,
     
     scene_arena: std.heap.ArenaAllocator,
-    programm_arena: std.heap.ArenaAllocator,
 
     // font fields
-    font_size: []u8,
+    font_size: []u32,
     ft_lib: ft.FT_Library,
     faces: [3]ft.FT_Face,
     glyphmaps: [3][3]std.AutoHashMap(u32, Bitmap),
@@ -56,16 +56,15 @@ pub const FMVideo = struct {
 
 var framework_state: FMVideo = undefined;
 
-pub export fn get_allocator (v: ?*FMVideo) *std.mem.Allocator {
-    return &v.?.arena.allocator();
+pub export fn get_allocator (v: ?*FMVideo) *const std.mem.Allocator {
+    return &v.?.scene_arena.allocator();
 }
 
 pub export fn init(name: [*:0]u8, width: i32, height: i32, face_names: [*][*:0]u8,
-    font_sizes: [*]u8, e: *i32) ?*FMVideo {
-    framework_state.arena = std.heap.ArenaAllocator.init(std.heap.page_alloctor);
+    font_sizes: [*]u32, e: *i32) ?*FMVideo {
+    framework_state.scene_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 
-    const programm_allocator = framework_state.programm_arena.allocator();
-    const scene_allocator = framework_state.scene_arena.allocator();
+    const allocator = framework_state.scene_arena.allocator();
 
     framework_state.counter = 0;
 
@@ -227,7 +226,7 @@ pub export fn init(name: [*:0]u8, width: i32, height: i32, face_names: [*][*:0]u
     }
     for (0..3) |i| {
         for (0..3) |j| {
-            framework_state.glyphmaps[i][j] = std.AutoHashMap(u32, Bitmap).init(programm_allocator);
+            framework_state.glyphmaps[i][j] = std.AutoHashMap(u32, Bitmap).init(allocator);
         }
     }
     // who knows how memory is allocated in ocaml? 

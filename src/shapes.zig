@@ -19,10 +19,10 @@ export fn circle (v: ?*FMVideo, pf: [*c]f32, co: [*c]u8, r: i32, w: i32, t: f32,
 
     var bgc: [3]u8 = undefined;
     const curangle: f32 = 2.0 * curframe * std.math.pi / nframes;
-    const x_min: usize = @bitCast(@as(i64, maths.max(p[0]-r-w, 0)));
-    const x_max: usize = @bitCast(@as(i64, maths.min(width, p[0]+r+w+1)));
-    const y_min: usize = @bitCast(@as(i64, maths.max(p[1]-r-w, 0)));
-    const y_max: usize = @bitCast(@as(i64, maths.min(height, p[1]+r+w)));
+    const x_min: usize = @bitCast(@as(i64, @max(p[0]-r-w, 0)));
+    const x_max: usize = @bitCast(@as(i64, @min(width, p[0]+r+w+1)));
+    const y_min: usize = @bitCast(@as(i64, @max(p[1]-r-w, 0)));
+    const y_max: usize = @bitCast(@as(i64, @min(height, p[1]+r+w)));
     for (x_min..x_max) |x| {
         for (y_min..y_max) |y| {
             var sm = [3]f32{0, 0, 0};
